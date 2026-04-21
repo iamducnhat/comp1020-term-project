@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VinTony POS UML</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
+  
+  body { margin: 0; padding: 0; background: #F8F9FA; display: flex; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; cursor: default; }
+  
+  .grid-layer {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background-image: radial-gradient(circle, #D5D8DC 1.5px, transparent 1.5px);
+      pointer-events: none; z-index: 1;
+  }
+  
+  .viewport { position: absolute; top:0; left:0; right:0; bottom:0; z-index: 2; overflow: hidden; }
+  .canvas { position: absolute; transform-origin: 0 0; width: 0; height: 0; }
+  
+  .overlay-tools {
+      position: absolute; top: 20px; right: 20px; z-index: 1000;
+      display: flex; gap: 8px; background: rgba(255,255,255,0.95);
+      padding: 8px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid #E9ECEF;
+      align-items: center; justify-content: center;
+  }
+  .overlay-tools button {
+      background: #FFF; border: 1px solid #CED4DA; border-radius: 6px;
+      padding: 8px 12px; font-weight: 600; font-size: 13px; cursor: pointer; color: #343A40;
+      transition: background 0.1s; display: flex; align-items: center; justify-content: center;
+  }
+  .overlay-tools button:hover { background: #F8F9FA; border-color: #ADB5BD; }
+  .overlay-tools .btn-icon { width: 32px; padding: 8px 0; font-size: 16px; }
+  
+  .box {
+    position: absolute; border-radius: 6px; border: 2px solid;
+    cursor: move; user-select: none; box-sizing: border-box; box-shadow: none; z-index: 10;
+    overflow-y: hidden; background-clip: padding-box;
+  }
+  .box:active { z-index: 100 !important; cursor: grabbing; }
+  
+  .stereo { text-align: center; font-size: 10px; font-style: italic; color: #495057; padding-top: 8px; flex-shrink: 0; }
+  .name { text-align: center; font-size: 14px; font-weight: 700; padding: 6px 12px 10px; color: #212529; flex-shrink: 0; }
+  .sec { border-top: 1px solid rgba(0,0,0,0.08); padding: 8px 12px; flex: 1; }
+  .member { font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-bottom: 4px; color: #343A40; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  
+  .abstract { background: #FFF3E0; border-color: #FFB74D; }
+  .concrete { background: #E8F5E9; border-color: #81C784; }
+  .enum { background: #F3E5F5; border-color: #BA68C8; }
+  .pattern { background: #E3F2FD; border-color: #64B5F6; }
+  .controller { background: #FFEBEE; border-color: #E57373; }
+  .view { background: #FFFDE7; border-color: #FFF176; }
+  .utility { background: #E0F7FA; border-color: #4DD0E1; }
+  
+  .path-label {
+    position: absolute; transform: translate(-50%, -50%); pointer-events: none;
+    background: #FFF; padding: 2px 6px; border-radius: 4px; border: 1px solid #DEE2E6;
+    font-size: 10px; color: #495057; font-weight: 600; font-family: 'JetBrains Mono', monospace; z-index: 15;
+  }
+
+  .arrow-anchor { 
+      cursor: crosshair; fill: #FFF; stroke: #3498DB; stroke-width: 2px; r: 6px; transition: transform 0.1s; 
+  }
+  .arrow-anchor:hover, .arrow-anchor[data-active="1"] { 
+      transform: scale(1.3); fill: #3498DB;
+  }
+  .path-mid-anchor {
+      cursor: move; fill: #FFF; stroke: #E67E22; stroke-width: 2px; transition: transform 0.1s; 
+  }
+  .path-mid-anchor:hover, .path-mid-anchor[data-active="1"] {
+      transform: scale(1.3); fill: #E67E22;
+  }
+
+  .path-hitbox {
+      fill: none; stroke: transparent; stroke-width: 32px; cursor: pointer; pointer-events: stroke;
+  }
+  .path-hitbox:hover {
+      stroke: rgba(0, 123, 255, 0.1);
+  }
+  
+  @media print {
+      .overlay-tools { display: none !important; }
+      body { background: #FFF !important; }
+      .grid-layer { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-layer" id="grid"></div>
+
+<div class="viewport" id="viewport">
+  <div class="canvas" id="canvas">
+    <svg id="svg-layer" style="position: absolute; top:0; left:0; width: 10000px; height: 10000px; overflow: visible; z-index: 5;">
+      <g id="paths"></g>
+    </svg>
+    <div id="boxes-layer"></div>
+    <div id="labels-layer"></div>
+  </div>
+</div>
+
+<div class="overlay-tools">
+  <span style="font-size: 12px; color:#6C757D; margin-right: 8px;">Select arrow to edit endpoints & folds</span>
+  <button class="btn-icon" onclick="zoomFactor(1.2)" title="Zoom In">+</button>
+  <button class="btn-icon" onclick="zoomFactor(0.8)" title="Zoom Out">-</button>
+  <button class="btn-icon" onclick="resetView()" title="Reset View">⌂</button>
+  <button onclick="exportPDF()" style="margin-left: 4px;">Export PDF</button>
+</div>
+
+<script>
+const classData = [{"id": "Size", "x": 96, "y": 96, "w": 192, "h": 168, "type": "enum", "f": ["S (1.0)", "M (1.3)", "L (1.6)"], "m": ["+ getMultiplier()"]}, {"id": "Beverage", "x": 408, "y": 96, "w": 288, "h": 360, "type": "abstract", "f": ["- name: String", "- size: Size", "- basePrice: double"], "m": ["+ calculatePrice()", "+ getDescription()", "+ getName()", "+ setName(n)", "+ getSize()", "+ setSize(s)", "+ getBasePrice()", "+ setBasePrice(p)", "+ toString()"]}, {"id": "ToppingDecorator", "x": 792, "y": 96, "w": 312, "h": 192, "type": "pattern", "f": ["- decoratedBeverage"], "m": ["+ getDecoratedBeverage()", "+ calculatePrice()", "+ getDescription()"]}, {"id": "Ingredient", "x": 1152, "y": 96, "w": 264, "h": 216, "type": "concrete", "f": ["- name: String", "- unit: String", "- quantity: double"], "m": ["+ getName()", "+ getQuantity()", "+ setQuantity(q)"]}, {"id": "MenuNode", "x": 1488, "y": 96, "w": 264, "h": 216, "type": "concrete", "f": ["- label: String", "- children: List", "- beverage: Beverage"], "m": ["+ addChild(n)", "+ getChildren()", "+ isLeaf()"]}, {"id": "Coffee", "x": 288, "y": 552, "w": 240, "h": 144, "type": "concrete", "f": ["- SURCHARGE = 0.10"], "m": ["+ calculatePrice()", "+ getDescription()"]}, {"id": "Tea", "x": 600, "y": 552, "w": 240, "h": 144, "type": "concrete", "f": [], "m": ["+ calculatePrice()", "+ getDescription()"]}, {"id": "Topping", "x": 864, "y": 456, "w": 312, "h": 240, "type": "concrete", "f": ["- name: String", "- price: double"], "m": ["+ calculatePrice()", "+ getDescription()", "+ getToppingName()", "+ setToppingName(n)", "+ getToppingPrice()", "+ setToppingPrice(p)"]}, {"id": "InventoryManager", "x": 1200, "y": 456, "w": 336, "h": 240, "type": "pattern", "f": ["- instance", "- ingredients"], "m": ["+ getInstance()", "+ addIngredient(i)", "+ getIngredient(name)", "+ updateStock(name, qty)"]}, {"id": "MenuTree", "x": 1584, "y": 456, "w": 264, "h": 168, "type": "concrete", "f": ["- root: MenuNode"], "m": ["+ getRoot()", "+ findNode(l)", "+ addCategory(l)"]}, {"id": "OrderStatus", "x": 48, "y": 912, "w": 216, "h": 192, "type": "enum", "f": ["PENDING", "PROCESSING", "COMPLETED", "CANCELLED"], "m": []}, {"id": "Order", "x": 360, "y": 912, "w": 312, "h": 288, "type": "concrete", "f": ["- orderId", "- items: List", "- customer: Customer", "- status: OrderStatus", "- orderTime", "- isVip: boolean"], "m": ["+ addItem(b)", "+ removeItem(b)", "+ getTotalPrice()", "+ compareTo(o)"]}, {"id": "Customer", "x": 744, "y": 912, "w": 288, "h": 216, "type": "concrete", "f": ["- name", "- phone", "- loyaltyPoints"], "m": ["+ addPoints(pts)", "+ redeemPoints(pts)", "+ getLoyaltyPoints()"]}, {"id": "Voucher", "x": 1104, "y": 912, "w": 288, "h": 216, "type": "concrete", "f": ["- code", "- discount", "- expiry", "- isUsed"], "m": ["+ isValid()", "+ applyDiscount(amt)"]}, {"id": "BeverageFactory", "x": 1440, "y": 912, "w": 288, "h": 168, "type": "pattern", "f": [], "m": ["+ createBeverage(...)"]}, {"id": "OrderController", "x": 192, "y": 1344, "w": 312, "h": 192, "type": "controller", "f": ["- queue", "- vipQueue"], "m": ["+ placeOrder(o)", "+ processNext()", "+ getQueueSize()"]}, {"id": "CustomerController", "x": 552, "y": 1344, "w": 336, "h": 192, "type": "controller", "f": ["- customers"], "m": ["+ addCustomer(c)", "+ findByPhone(p)", "+ getAllCustomers()"]}, {"id": "VoucherController", "x": 960, "y": 1344, "w": 336, "h": 192, "type": "controller", "f": ["- vouchers"], "m": ["+ addVoucher(v)", "+ findByCode(c)", "+ applyVoucher(c, amt)"]}, {"id": "InventoryController", "x": 1344, "y": 1344, "w": 336, "h": 192, "type": "controller", "f": ["- manager"], "m": ["+ addIngredient(i)", "+ checkStock(name)", "+ restock(name, qty)"]}, {"id": "ActionHistory", "x": 360, "y": 1656, "w": 312, "h": 216, "type": "utility", "f": ["- undoStack", "- redoStack"], "m": ["+ pushAction(a)", "+ undo()", "+ redo()", "+ canUndo()"]}, {"id": "SortUtil", "x": 744, "y": 1656, "w": 336, "h": 192, "type": "utility", "f": [], "m": ["+ sortOrders(list)", "+ sortCustomers(list)", "+ binarySearch(list, p)"]}, {"id": "MainFrame", "x": 1848, "y": 192, "w": 264, "h": 144, "type": "view", "f": ["- tabbedPane"], "m": ["+ MainFrame()", "+ initPanels()"]}, {"id": "OrderPanel", "x": 1848, "y": 456, "w": 264, "h": 120, "type": "view", "f": [], "m": ["+ initComponents()"]}, {"id": "CustomerPanel", "x": 1848, "y": 600, "w": 264, "h": 120, "type": "view", "f": [], "m": ["+ initComponents()"]}, {"id": "InventoryPanel", "x": 1848, "y": 744, "w": 264, "h": 120, "type": "view", "f": [], "m": ["+ initComponents()"]}, {"id": "VoucherPanel", "x": 1848, "y": 912, "w": 264, "h": 120, "type": "view", "f": [], "m": ["+ initComponents()"]}];
+const relData = [{"from": "Coffee", "to": "Beverage", "type": "extends", "side1": "top-2", "side2": "bottom-2", "lbl": ""}, {"from": "Tea", "to": "Beverage", "type": "extends", "side1": "top-4", "side2": "bottom-4", "lbl": ""}, {"from": "ToppingDecorator", "to": "Beverage", "type": "extends", "side1": "left-3", "side2": "right-4", "lbl": ""}, {"from": "Topping", "to": "ToppingDecorator", "type": "extends", "side1": "top-3", "side2": "bottom-3", "lbl": ""}, {"from": "ToppingDecorator", "to": "Beverage", "type": "composes", "side1": "left-1", "side2": "right-2", "lbl": "decorates 1"}, {"from": "Order", "to": "Beverage", "type": "aggregates", "side1": "top-2", "side2": "bottom-1", "lbl": "items *"}, {"from": "Order", "to": "Customer", "type": "aggregates", "side1": "right-2", "side2": "left-2", "lbl": "1"}, {"from": "Order", "to": "OrderStatus", "type": "uses", "side1": "left-2", "side2": "right-2", "lbl": ""}, {"from": "Beverage", "to": "Size", "type": "uses", "side1": "left-3", "side2": "right-3", "lbl": ""}, {"from": "InventoryManager", "to": "Ingredient", "type": "composes", "side1": "top-3", "side2": "bottom-3", "lbl": "manages *"}, {"from": "MenuTree", "to": "MenuNode", "type": "composes", "side1": "top-3", "side2": "bottom-3", "lbl": "root"}, {"from": "MenuNode", "to": "Beverage", "type": "aggregates", "side1": "left-3", "side2": "right-5", "lbl": "0..1"}, {"from": "BeverageFactory", "to": "Beverage", "type": "creates", "side1": "top-3", "side2": "bottom-5", "lbl": "creates"}, {"from": "OrderController", "to": "Order", "type": "uses", "side1": "top-2", "side2": "bottom-2", "lbl": "manages"}, {"from": "CustomerController", "to": "Customer", "type": "uses", "side1": "top-3", "side2": "bottom-3", "lbl": "manages"}, {"from": "VoucherController", "to": "Voucher", "type": "uses", "side1": "top-3", "side2": "bottom-3", "lbl": "manages"}, {"from": "InventoryController", "to": "InventoryManager", "type": "uses", "side1": "top-3", "side2": "bottom-3", "lbl": "delegates"}, {"from": "OrderPanel", "to": "OrderController", "type": "uses", "side1": "left-3", "side2": "right-2", "lbl": ""}, {"from": "CustomerPanel", "to": "CustomerController", "type": "uses", "side1": "left-3", "side2": "right-3", "lbl": ""}, {"from": "InventoryPanel", "to": "InventoryController", "type": "uses", "side1": "left-3", "side2": "right-3", "lbl": ""}, {"from": "VoucherPanel", "to": "VoucherController", "type": "uses", "side1": "left-3", "side2": "right-3", "lbl": ""}, {"from": "OrderController", "to": "ActionHistory", "type": "uses", "side1": "bottom-2", "side2": "top-3", "lbl": ""}, {"from": "OrderController", "to": "SortUtil", "type": "uses", "side1": "bottom-4", "side2": "top-2", "lbl": ""}, {"from": "CustomerController", "to": "SortUtil", "type": "uses", "side1": "bottom-3", "side2": "top-4", "lbl": ""}];
+
+const GRID = 24;
+const OFFSET = 48; // Edge escape distance
+
+const colors = {
+  'extends': { c: '#495057', dash: '' },
+  'composes': { c: '#343A40', dash: '' },
+  'aggregates': { c: '#2B8535', dash: '' },
+  'uses': { c: '#6C757D', dash: '6 6' },
+  'creates': { c: '#E67E22', dash: '6 6' }
+};
+
+let scale = 1; let panX = 0; let panY = 0;
+let selectedRelIndex = -1; // -1 means none
+
+const viewport = document.getElementById('viewport');
+const canvasLayer = document.getElementById('canvas');
+const gridLayer = document.getElementById('grid');
+const boxesLayer = document.getElementById('boxes-layer');
+const pathsLayer = document.getElementById('paths');
+const labelsLayer = document.getElementById('labels-layer');
+
+function updateTransform() {
+    canvasLayer.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    gridLayer.style.backgroundPosition = `${panX}px ${panY}px`;
+    gridLayer.style.backgroundSize = `${GRID * scale}px ${GRID * scale}px`;
+}
+
+function zoomFactor(f) {
+    let oldScale = scale;
+    scale = Math.max(0.1, Math.min(scale * f, 5));
+    let cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    panX = cx - (cx - panX) * (scale / oldScale);
+    panY = cy - (cy - panY) * (scale / oldScale);
+    updateTransform();
+}
+
+function resetView() {
+    scale = 1; panX = window.innerWidth/3; panY = 50; updateTransform();
+}
+
+function exportPDF() { resetView(); setTimeout(() => { window.print(); }, 100); }
+
+function renderBoxes() {
+  boxesLayer.innerHTML = '';
+  classData.forEach((dat) => {
+    let div = document.createElement('div');
+    div.className = `box ${dat.type}`;
+    div.id = `box-${dat.id}`;
+    div.style.left = dat.x + 'px'; div.style.top = dat.y + 'px';
+    div.style.width = dat.w + 'px'; div.style.height = dat.h + 'px'; // Exact mathematical match bounds!
+    
+    let st = dat.type!=='concrete' ? `<div class="stereo">«${dat.type}»</div>` : '';
+    let fHtml = dat.f.map(f => `<div class="member">${f}</div>`).join('');
+    let mHtml = dat.m.map(m => `<div class="member">${m}</div>`).join('');
+    div.innerHTML = `${st}<div class="name">${dat.id}</div>${fHtml ? `<div class="sec">${fHtml}</div>`:''}${mHtml ? `<div class="sec">${mHtml}</div>`:''}`;
+    boxesLayer.appendChild(div);
+  });
+}
+
+function getBox(id) { return classData.find(c => c.id === id); }
+function snapV(v) { return Math.round(v / GRID) * GRID; }
+
+function getOrthoPoints(bA, sA, bB, sB, relObj) {
+  function pt(b, s) {
+    let parts = s.split('-');
+    let f = parts[0];
+    let pIdx = parts[1] ? parseInt(parts[1]) : 3;
+    if (isNaN(pIdx) || pIdx < 1 || pIdx > 5) pIdx = 3;
+    if(f==='top') return {x: snapV(b.x + pIdx*(b.w/6)), y: b.y, dx:0, dy:-1};
+    if(f==='bottom') return {x: snapV(b.x + pIdx*(b.w/6)), y: b.y + b.h, dx:0, dy:1};
+    if(f==='left') return {x: b.x, y: snapV(b.y + pIdx*(b.h/6)), dx:-1, dy:0};
+    if(f==='right') return {x: b.x + b.w, y: snapV(b.y + pIdx*(b.h/6)), dx:1, dy:0};
+  }
+  
+  if (sA.startsWith('auto') || sB.startsWith('auto')) {
+    let cxA = bA.x + bA.w/2, cyA = bA.y + bA.h/2;
+    let cxB = bB.x + bB.w/2, cyB = bB.y + bB.h/2;
+    let dx = cxB - cxA, dy = cyB - cyA;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if(sA.startsWith('auto')) sA = (dx > 0 ? 'right' : 'left') + '-3';
+      if(sB.startsWith('auto')) sB = (dx > 0 ? 'left' : 'right') + '-3';
+    } else {
+      if(sA.startsWith('auto')) sA = (dy > 0 ? 'bottom' : 'top') + '-3';
+      if(sB.startsWith('auto')) sB = (dy > 0 ? 'top' : 'bottom') + '-3';
+    }
+  } else {
+      if (!sA.includes('-')) sA += '-3';
+      if (!sB.includes('-')) sB += '-3';
+  }
+  
+  let pA = pt(bA, sA), pB = pt(bB, sB);
+  let ex = pA.x + pA.dx * OFFSET; let ey = pA.y + pA.dy * OFFSET;
+  let enx = pB.x + pB.dx * OFFSET; let eny = pB.y + pB.dy * OFFSET;
+  
+  let pts = [ {x: pA.x, y: pA.y}, {x: ex, y: ey} ];
+  let foldType = null;
+  
+  let fA = sA.split('-')[0], fB = sB.split('-')[0];
+  
+  if (['top', 'bottom'].includes(fA)) {
+    if (['top', 'bottom'].includes(fB)) {
+      let mY = relObj.mid !== undefined ? relObj.mid : snapV((ey + eny)/2);
+      pts.push({x: ex, y: mY}, {x: enx, y: mY});
+      foldType = 'y';
+    } else { pts.push({x: ex, y: eny}); }
+  } else {
+    if (['left', 'right'].includes(fB)) {
+      let mX = relObj.mid !== undefined ? relObj.mid : snapV((ex + enx)/2);
+      pts.push({x: mX, y: ey}, {x: mX, y: eny});
+      foldType = 'x';
+    } else { pts.push({x: enx, y: ey}); }
+  }
+  pts.push({x: enx, y: eny}, {x: pB.x, y: pB.y});
+  return {pts, foldType};
+}
+
+function computeRoundedPath(rawPoints, r) {
+  if (!rawPoints || rawPoints.length < 2) return "";
+  
+  // 1. Remove exact duplicate adjacent points
+  let pts = [rawPoints[0]];
+  for (let i = 1; i < rawPoints.length; i++) {
+     let prev = pts[pts.length-1], curr = rawPoints[i];
+     if (Math.abs(curr.x - prev.x) > 0.1 || Math.abs(curr.y - prev.y) > 0.1) pts.push(curr);
+  }
+  
+  // 2. Remove collinear forward points
+  let cleanPts = [pts[0]];
+  for (let i = 1; i < pts.length - 1; i++) {
+      let p0 = cleanPts[cleanPts.length-1], p1 = pts[i], p2 = pts[i+1];
+      let cross = (p1.x - p0.x)*(p2.y - p1.y) - (p1.y - p0.y)*(p2.x - p1.x);
+      let dot = (p1.x - p0.x)*(p2.x - p1.x) + (p1.y - p0.y)*(p2.y - p1.y);
+      // Keep vertex if it introduces a turn (cross != 0) OR a reverse direction (dot < 0)
+      if (Math.abs(cross) > 0.1 || dot < -0.1) { 
+          cleanPts.push(p1);
+      }
+  }
+  if (pts.length > 1) cleanPts.push(pts[pts.length-1]);
+  
+  let points = cleanPts;
+  if (points.length < 2) return "";
+
+  let d = `M ${points[0].x} ${points[0].y} `;
+  for (let i = 1; i < points.length - 1; i++) {
+    let p0 = points[i-1], p1 = points[i], p2 = points[i+1];
+    let dx1 = p1.x - p0.x, dy1 = p1.y - p0.y, l1 = Math.hypot(dx1, dy1);
+    let dx2 = p2.x - p1.x, dy2 = p2.y - p1.y, l2 = Math.hypot(dx2, dy2);
+    if (l1 < 0.1 || l2 < 0.1) { d += `L ${p1.x} ${p1.y} `; continue; }
+    
+    // Exact radius with strict clipping guard to fit corner length
+    let cr = Math.min(r, l1 - 0.5, l2 - 0.5); 
+    if (cr < 0.1) cr = 0.1;
+
+    let x1 = p1.x - (dx1/l1)*cr, y1 = p1.y - (dy1/l1)*cr;
+    let x2 = p1.x + (dx2/l2)*cr, y2 = p1.y + (dy2/l2)*cr;
+    d += `L ${x1} ${y1} Q ${p1.x} ${p1.y} ${x2} ${y2} `;
+  }
+  d += `L ${points[points.length-1].x} ${points[points.length-1].y}`;
+  return d;
+}
+
+function renderArrows() {
+  pathsLayer.innerHTML = ''; labelsLayer.innerHTML = '';
+  
+  relData.forEach((rel, idx) => {
+    let bA = getBox(rel.from), bB = getBox(rel.to);
+    if(!bA || !bB) return;
+    
+    let {pts, foldType} = getOrthoPoints(bA, rel.side1, bB, rel.side2, rel);
+    rel.foldType = foldType;
+    rel.computedPts = pts;
+    
+    let d = computeRoundedPath(pts, 16);
+    let style = colors[rel.type];
+    let isSelected = (selectedRelIndex === idx);
+    let activeColor = isSelected ? '#007BFF' : style.c;
+    
+    let group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    
+    // Hitbox for selection
+    let hitbox = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    hitbox.setAttribute('d', d); hitbox.setAttribute('class', 'path-hitbox');
+    hitbox.dataset.idx = idx;
+    group.appendChild(hitbox);
+    
+    // Physical Line
+    let path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d); path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', activeColor); 
+    path.setAttribute('stroke-width', isSelected ? '2.5' : '1.5');
+    if(style.dash) path.setAttribute('stroke-dasharray', style.dash);
+    group.appendChild(path);
+    
+    // Head Marker
+    if (pts.length >= 2) {
+      let p2 = pts[pts.length-1], p1 = pts[pts.length-2];
+      let angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+      let gH = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      gH.setAttribute('transform', `translate(${p2.x}, ${p2.y}) rotate(${angle})`);
+      let head;
+      if (rel.type === 'extends') {
+        head = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        head.setAttribute('points', '-14,-6 0,0 -14,6');
+        head.setAttribute('fill', '#FFF'); head.setAttribute('stroke', activeColor); head.setAttribute('stroke-width', '1.5');
+      } else if (rel.type === 'composes') {
+        head = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        head.setAttribute('points', '-16,0 -8,-7 0,0 -8,7');
+        head.setAttribute('fill', activeColor);
+      } else if (rel.type === 'aggregates') {
+        head = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        head.setAttribute('points', '-16,0 -8,-7 0,0 -8,7');
+        head.setAttribute('fill', '#FFF'); head.setAttribute('stroke', activeColor); head.setAttribute('stroke-width', '1.5');
+      } else {
+        head = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        head.setAttribute('points', '-10,-6 0,0 -10,6');
+        head.setAttribute('fill', 'none'); head.setAttribute('stroke', activeColor); head.setAttribute('stroke-width', isSelected?'2.5':'1.5');
+        head.setAttribute('stroke-linecap', 'round'); head.setAttribute('stroke-linejoin', 'round');
+      }
+      gH.appendChild(head); group.appendChild(gH);
+    }
+    
+    // Display Interactive Controls only if Selected
+    if (isSelected) {
+        let makeAnchor = (pt, isSrc) => {
+            let a = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            a.setAttribute('cx', pt.x); a.setAttribute('cy', pt.y);
+            a.setAttribute('class', 'arrow-anchor');
+            a.style.transformOrigin = `${pt.x}px ${pt.y}px`;
+            a.dataset.idx = idx; a.dataset.isSource = isSrc;
+            return a;
+        };
+        group.appendChild(makeAnchor(pts[0], true));
+        group.appendChild(makeAnchor(pts[pts.length-1], false));
+        
+        if (foldType) {
+            let mIdx = Math.floor(pts.length/2);
+            let a = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            let cx, cy;
+            if (foldType === 'y') {
+                cx = (pts[mIdx-1].x + pts[mIdx].x)/2; cy = pts[mIdx].y;
+            } else {
+                cx = pts[mIdx].x; cy = (pts[mIdx-1].y + pts[mIdx].y)/2;
+            }
+            a.setAttribute('x', cx - 6); a.setAttribute('y', cy - 6);
+            a.setAttribute('width', '12'); a.setAttribute('height', '12');
+            a.style.transformOrigin = `${cx}px ${cy}px`;
+            a.setAttribute('class', 'path-mid-anchor');
+            a.style.cursor = foldType === 'x' ? 'ew-resize' : 'ns-resize';
+            a.dataset.idx = idx; a.dataset.axis = foldType;
+            group.appendChild(a);
+        }
+        // Force the selected path to render on top of others
+        pathsLayer.appendChild(group); 
+    } else {
+        pathsLayer.insertBefore(group, pathsLayer.firstChild);
+    }
+    
+    if (rel.lbl) {
+      let mI = Math.floor(pts.length/2);
+      let cx = (pts[mI-1].x + pts[mI].x)/2, cy = (pts[mI-1].y + pts[mI].y)/2;
+      let lbl = document.createElement('div'); lbl.className = 'path-label'; lbl.innerText = rel.lbl;
+      if (isSelected) { lbl.style.borderColor = activeColor; lbl.style.color = activeColor; }
+      lbl.style.left = cx + 'px'; lbl.style.top = cy + 'px';
+      labelsLayer.appendChild(lbl);
+    }
+  });
+}
+
+// ---------------------------
+// EVENTS & INTERACTIONS
+// ---------------------------
+
+let isPanning=false, pStartX, pStartY, initPanX, initPanY;
+let dragSource=null, startX, startY, initLeft, initTop;
+let activeAnchor=null, activeMid=null;
+
+// Panning
+viewport.addEventListener('mousedown', e => {
+  if (e.target.closest('.overlay-tools')) return;
+  
+  if (e.button === 1 || e.button === 2 || (!e.target.closest('.box') && !e.target.closest('.arrow-anchor') && !e.target.closest('.path-hitbox') && !e.target.closest('.path-mid-anchor'))) {
+     isPanning = true;
+     pStartX = e.clientX; pStartY = e.clientY;
+     initPanX = panX; initPanY = panY;
+     selectedRelIndex = -1; renderArrows();
+     e.preventDefault();
+  }
+});
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+window.addEventListener('wheel', e => {
+  if(e.ctrlKey || e.metaKey) {
+     e.preventDefault();
+     let oldScale = scale;
+     scale = Math.max(0.1, Math.min(scale * (1 - e.deltaY * 0.01), 5));
+     panX = e.clientX - (e.clientX - panX) * (scale / oldScale);
+     panY = e.clientY - (e.clientY - panY) * (scale / oldScale);
+     updateTransform();
+  } else {
+     panX -= e.deltaX; panY -= e.deltaY;
+     updateTransform();
+  }
+}, {passive: false});
+
+// Element Selection
+boxesLayer.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  let box = e.target.closest('.box');
+  if (box) {
+    dragSource = box;
+    startX = e.clientX; startY = e.clientY;
+    initLeft = parseFloat(box.style.left); initTop = parseFloat(box.style.top);
+  }
+});
+
+pathsLayer.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (e.target.classList.contains('arrow-anchor')) {
+      activeAnchor = e.target; activeAnchor.dataset.active = "1";
+      e.stopPropagation();
+  } else if(e.target.classList.contains('path-mid-anchor')) {
+      activeMid = e.target; activeMid.dataset.active = "1";
+      e.stopPropagation();
+  } else if (e.target.classList.contains('path-hitbox')) {
+      selectedRelIndex = parseInt(e.target.dataset.idx);
+      renderArrows();
+      e.stopPropagation();
+  }
+});
+
+document.addEventListener('mousemove', e => {
+  if (isPanning) {
+    panX = initPanX + (e.clientX - pStartX); panY = initPanY + (e.clientY - pStartY);
+    updateTransform();
+  } else if (dragSource) {
+    let curX = snapV(initLeft + (e.clientX - startX) / scale);
+    let curY = snapV(initTop + (e.clientY - startY) / scale);
+    dragSource.style.left = curX + 'px'; dragSource.style.top = curY + 'px';
+    let id = dragSource.id.replace('box-', '');
+    getBox(id).x = curX; getBox(id).y = curY;
+    renderArrows();
+  } else if (activeAnchor) {
+    let ptX = (e.clientX - panX) / scale, ptY = (e.clientY - panY) / scale;
+    let bDist = Infinity, bBox = null, bSide = 'auto', bPort = 3;
+    classData.forEach(b => {
+      let ds = { 'top': Math.abs(ptY - b.y), 'bottom': Math.abs(ptY - (b.y + b.h)),
+                 'left': Math.abs(ptX - b.x), 'right': Math.abs(ptX - (b.x + b.w)) };
+      for(let s in ds) {
+        let dist = ds[s];
+        if(['top','bottom'].includes(s)) { if(ptX < b.x || ptX > b.x+b.w) dist += 1000; }
+        else { if(ptY < b.y || ptY > b.y+b.h) dist += 1000; }
+        if(dist < bDist) { 
+           bDist = dist; bBox = b.id; bSide = s; 
+           if (['top', 'bottom'].includes(s)) {
+               bPort = Math.max(1, Math.min(5, Math.round((ptX - b.x) / (b.w / 6))));
+           } else {
+               bPort = Math.max(1, Math.min(5, Math.round((ptY - b.y) / (b.h / 6))));
+           }
+        }
+      }
+    });
+    let idx = parseInt(activeAnchor.dataset.idx);
+    let isSrc = activeAnchor.dataset.isSource === 'true';
+    if(bBox) {
+       let fullSide = bSide + '-' + bPort;
+       if(isSrc) { relData[idx].from = bBox; relData[idx].side1 = fullSide; }
+       else { relData[idx].to = bBox; relData[idx].side2 = fullSide; }
+    }
+    renderArrows();
+    activeAnchor = Array.from(document.querySelectorAll('.arrow-anchor')).find(a => a.dataset.idx == idx && a.dataset.isSource === (isSrc?'true':'false'));
+    if(activeAnchor) activeAnchor.dataset.active = "1";
+  } else if (activeMid) {
+    let ptX = (e.clientX - panX) / scale, ptY = (e.clientY - panY) / scale;
+    let idx = parseInt(activeMid.dataset.idx);
+    let axis = activeMid.dataset.axis;
+    if (axis === 'y') { relData[idx].mid = snapV(ptY); } else { relData[idx].mid = snapV(ptX); }
+    renderArrows();
+    activeMid = Array.from(document.querySelectorAll('.path-mid-anchor')).find(a => a.dataset.idx == idx);
+    if(activeMid) activeMid.dataset.active = "1";
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  isPanning = false; dragSource = null;
+  if(activeAnchor) { activeAnchor.dataset.active = "0"; activeAnchor = null; }
+  if(activeMid) { activeMid.dataset.active = "0"; activeMid = null; }
+});
+
+// Init
+renderBoxes(); renderArrows(); updateTransform();
+setTimeout(() => { resetView(); }, 50);
+
+</script>
+</body>
+</html>

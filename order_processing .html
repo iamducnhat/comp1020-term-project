@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>VinTony POS – T09: Queue & PriorityQueue Design</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #F7F6F3;
+    --surface: #FFFFFF;
+    --border: #E2E0D9;
+    --accent-vip: #C8581A;
+    --accent-reg: #2C6E49;
+    --accent-sys: #2456A4;
+    --text-1: #1A1917;
+    --text-2: #5A5854;
+    --text-3: #8A8680;
+    --code-bg: #1C1B18;
+    --code-text: #E8E4DA;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text-1);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 48px 24px;
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .header-left h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; }
+  .header-left p  { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+  .header-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .badge {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 4px; border: 1px solid;
+  }
+  .badge-phase  { background: #EEF2E8; color: #2C6E49; border-color: #B5CFA8; }
+  .badge-id     { background: #EDF1FA; color: #2456A4; border-color: #B0C2E8; }
+  .badge-status { background: #FEF3EB; color: #C8581A; border-color: #F2C49A; }
+
+  /* ── Layout ── */
+  main { max-width: 1200px; margin: 0 auto; padding: 40px 48px; }
+  section { margin-bottom: 52px; }
+  h2 {
+    font-size: 16px; font-weight: 600; letter-spacing: -0.2px;
+    margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2 .sec-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--text-1); color: #fff;
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Flowchart ── */
+  .flow-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px;
+    overflow-x: auto;
+  }
+  .flow-legend {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--text-2);
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+  svg.flowchart { width: 100%; max-width: 900px; display: block; margin: 0 auto; }
+
+  /* ── Interface Grid ── */
+  .interface-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .interface-grid { grid-template-columns: 1fr; } }
+
+  .iface-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .iface-card-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .iface-card-header h3 { font-size: 14px; font-weight: 600; }
+  .iface-card-header .tag {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 3px;
+  }
+
+  /* ── Code blocks ── */
+  pre {
+    background: var(--code-bg); color: var(--code-text);
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
+    padding: 20px 24px; overflow-x: auto;
+    border-radius: 0 0 10px 10px;
+  }
+  .kw  { color: #CF8E6D; }
+  .tp  { color: #56A8F5; }
+  .fn  { color: #FFC66D; }
+  .cm  { color: #6A9955; font-style: italic; }
+  .st  { color: #6AAB73; }
+  .an  { color: #BBB529; }
+
+  /* ── Complexity Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table thead { background: #F0EDE8; }
+  th, td { padding: 10px 14px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { font-weight: 600; font-size: 12px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.4px; }
+  td:nth-child(n+3) { font-family: var(--mono); font-size: 12px; }
+  .td-good  { color: #2C6E49; font-weight: 600; }
+  .td-ok    { color: #C8581A; font-weight: 600; }
+
+  /* ── Note box ── */
+  .note {
+    background: #EDF1FA; border-left: 3px solid var(--accent-sys);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px; font-size: 13px; color: #1E3A6E;
+    margin-top: 20px; line-height: 1.6;
+  }
+  .note strong { font-weight: 600; }
+
+  /* ── Print ── */
+  @media print {
+    body { background: #fff; }
+    header { border: none; }
+    .flow-wrap { border: 1px solid #ccc; }
+    pre { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>VinTony POS — Queue &amp; PriorityQueue Design</h1>
+    <p>Thiết kế cấu trúc dữ liệu cho luồng xử lý order: Regular Queue (FIFO) và VIP Priority Queue</p>
+    <div class="header-meta">
+      <span class="badge badge-phase">Phase 3 – Design</span>
+      <span class="badge badge-id">T09</span>
+      <span class="badge badge-id">Cần: T03, T01</span>
+      <span class="badge badge-status">In Progress</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ══════════════════════════════════════
+     SECTION 1 — FLOWCHART
+══════════════════════════════════════ -->
+<section>
+  <h2><span class="sec-num">1</span>Flowchart — Luồng xử lý Order</h2>
+
+  <div class="flow-wrap">
+
+    <div class="flow-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#EDF1FA;border:1.5px solid #2456A4;"></div>Bước hệ thống</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FEF3EB;border:1.5px solid #C8581A;"></div>VIP path (PriorityQueue)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#EEF2E8;border:1.5px solid #2C6E49;"></div>Regular path (FIFO Queue)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#F3F0ED;border:1.5px solid #8A8680;border-radius:50%;"></div>Decision / Gate</div>
+    </div>
+
+    <!-- SVG Flowchart -->
+    <svg class="flowchart" viewBox="0 0 860 820" xmlns="http://www.w3.org/2000/svg" role="img">
+      <title>Flowchart: Order Queue Processing</title>
+      <desc>Luồng xử lý order: customer đặt hàng → kiểm tra VIP → enqueue vào VIP PriorityQueue hoặc Regular FIFO Queue → OrderController dequeue → hoàn thành</desc>
+
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="arr-vip" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#C8581A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="arr-reg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#2C6E49" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <!-- ─── START ─── -->
+      <rect x="305" y="20" width="250" height="52" rx="26" fill="#1A1917" stroke="none"/>
+      <text x="430" y="51" text-anchor="middle" dominant-baseline="central" fill="#F7F6F3" font-family="IBM Plex Sans,sans-serif" font-size="14" font-weight="600">Customer đặt order</text>
+
+      <!-- Arrow: start → validate -->
+      <line x1="430" y1="72" x2="430" y2="108" stroke="#5A5854" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- ─── VALIDATE ORDER ─── -->
+      <rect x="290" y="110" width="280" height="52" rx="8" fill="#EDF1FA" stroke="#2456A4" stroke-width="1.5"/>
+      <text x="430" y="131" text-anchor="middle" dominant-baseline="central" fill="#1E3A6E" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600">Validate Order</text>
+      <text x="430" y="149" text-anchor="middle" dominant-baseline="central" fill="#4A6FA5" font-family="IBM Plex Mono,monospace" font-size="11">Order.validate()</text>
+
+      <!-- Arrow: validate → diamond -->
+      <line x1="430" y1="162" x2="430" y2="202" stroke="#5A5854" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- ─── DIAMOND: Is VIP? ─── -->
+      <!-- diamond at center 430, 224 -->
+      <polygon points="430,202 510,224 430,246 350,224" fill="#F3F0ED" stroke="#8A8680" stroke-width="1.5"/>
+      <text x="430" y="225" text-anchor="middle" dominant-baseline="central" fill="#3A3835" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600">VIP?</text>
+
+      <!-- Label YES (left) -->
+      <text x="332" y="218" text-anchor="middle" fill="#C8581A" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600">YES</text>
+
+      <!-- Label NO (right) -->
+      <text x="530" y="218" text-anchor="middle" fill="#2C6E49" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600">NO</text>
+
+      <!-- ─── LEFT BRANCH: VIP ─── -->
+      <!-- Arrow diamond → VIP lookup (left) -->
+      <path d="M350 224 L170 224 L170 290" stroke="#C8581A" stroke-width="1.5" fill="none" marker-end="url(#arr-vip)"/>
+
+      <!-- VIP: lookup loyalty points -->
+      <rect x="70" y="292" width="200" height="56" rx="8" fill="#FEF3EB" stroke="#C8581A" stroke-width="1.5"/>
+      <text x="170" y="313" text-anchor="middle" dominant-baseline="central" fill="#7A3210" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600">Tính VIP priority</text>
+      <text x="170" y="333" text-anchor="middle" dominant-baseline="central" fill="#C8581A" font-family="IBM Plex Mono,monospace" font-size="10.5">loyaltyPoints → priority</text>
+
+      <!-- Arrow → VIP enqueue -->
+      <line x1="170" y1="348" x2="170" y2="384" stroke="#C8581A" stroke-width="1.5" marker-end="url(#arr-vip)"/>
+
+      <!-- VIP: enqueue -->
+      <rect x="60" y="386" width="220" height="68" rx="8" fill="#FEF3EB" stroke="#C8581A" stroke-width="2"/>
+      <text x="170" y="407" text-anchor="middle" dominant-baseline="central" fill="#7A3210" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600">vipQueue.enqueue(order)</text>
+      <text x="170" y="425" text-anchor="middle" dominant-baseline="central" fill="#C8581A" font-family="IBM Plex Mono,monospace" font-size="10">PriorityQueue&lt;Order&gt;</text>
+      <text x="170" y="442" text-anchor="middle" dominant-baseline="central" fill="#C8581A" font-family="IBM Plex Mono,monospace" font-size="10">max-heap by loyaltyPts</text>
+
+      <!-- ─── RIGHT BRANCH: Regular ─── -->
+      <!-- Arrow diamond → Regular enqueue (right) -->
+      <path d="M510 224 L690 224 L690 290" stroke="#2C6E49" stroke-width="1.5" fill="none" marker-end="url(#arr-reg)"/>
+
+      <!-- Reg: normal flow -->
+      <rect x="590" y="292" width="200" height="56" rx="8" fill="#EEF2E8" stroke="#2C6E49" stroke-width="1.5"/>
+      <text x="690" y="313" text-anchor="middle" dominant-baseline="central" fill="#1A4030" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600">Giữ nguyên priority</text>
+      <text x="690" y="333" text-anchor="middle" dominant-baseline="central" fill="#2C6E49" font-family="IBM Plex Mono,monospace" font-size="10.5">FIFO — order của tới</text>
+
+      <!-- Arrow → Regular enqueue -->
+      <line x1="690" y1="348" x2="690" y2="384" stroke="#2C6E49" stroke-width="1.5" marker-end="url(#arr-reg)"/>
+
+      <!-- Regular enqueue -->
+      <rect x="580" y="386" width="220" height="68" rx="8" fill="#EEF2E8" stroke="#2C6E49" stroke-width="2"/>
+      <text x="690" y="407" text-anchor="middle" dominant-baseline="central" fill="#1A4030" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600">regularQueue.enqueue(order)</text>
+      <text x="690" y="425" text-anchor="middle" dominant-baseline="central" fill="#2C6E49" font-family="IBM Plex Mono,monospace" font-size="10">LinkedList&lt;Order&gt;</text>
+      <text x="690" y="442" text-anchor="middle" dominant-baseline="central" fill="#2C6E49" font-family="IBM Plex Mono,monospace" font-size="10">FIFO — addLast / removeFirst</text>
+
+      <!-- ─── MERGE → OrderController ─── -->
+      <!-- Left branch up to center -->
+      <path d="M170 454 L170 548 L330 548" stroke="#C8581A" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+      <!-- Right branch up to center -->
+      <path d="M690 454 L690 548 L530 548" stroke="#2C6E49" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+      <!-- OrderController box -->
+      <rect x="250" y="520" width="360" height="68" rx="8" fill="#EDF1FA" stroke="#2456A4" stroke-width="2"/>
+      <text x="430" y="541" text-anchor="middle" dominant-baseline="central" fill="#1E3A6E" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600">OrderController.processNext()</text>
+      <text x="430" y="559" text-anchor="middle" dominant-baseline="central" fill="#4A6FA5" font-family="IBM Plex Mono,monospace" font-size="10.5">vipQueue trước → regularQueue sau</text>
+      <text x="430" y="577" text-anchor="middle" dominant-baseline="central" fill="#4A6FA5" font-family="IBM Plex Mono,monospace" font-size="10">dequeue() → assign to barista</text>
+
+      <!-- Arrow → Dequeue logic -->
+      <line x1="430" y1="588" x2="430" y2="626" stroke="#5A5854" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- ─── DIAMOND: vipQueue empty? ─── -->
+      <polygon points="430,626 510,648 430,670 350,648" fill="#F3F0ED" stroke="#8A8680" stroke-width="1.5"/>
+      <text x="430" y="649" text-anchor="middle" dominant-baseline="central" fill="#3A3835" font-family="IBM Plex Sans,sans-serif" font-size="12" font-weight="600">vipQueue.isEmpty()?</text>
+
+      <!-- NO → dequeue VIP (left) -->
+      <text x="334" y="642" text-anchor="middle" fill="#C8581A" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600">NO</text>
+      <path d="M350 648 L270 648 L270 700" stroke="#C8581A" stroke-width="1.5" fill="none" marker-end="url(#arr-vip)"/>
+      <rect x="186" y="700" width="168" height="42" rx="6" fill="#FEF3EB" stroke="#C8581A" stroke-width="1.5"/>
+      <text x="270" y="717" text-anchor="middle" dominant-baseline="central" fill="#7A3210" font-family="IBM Plex Mono,monospace" font-size="11.5" font-weight="600">vipQueue.dequeue()</text>
+      <text x="270" y="733" text-anchor="middle" dominant-baseline="central" fill="#C8581A" font-family="IBM Plex Mono,monospace" font-size="10">peak loyalty points first</text>
+
+      <!-- YES → dequeue Regular (right) -->
+      <text x="528" y="642" text-anchor="middle" fill="#2C6E49" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600">YES</text>
+      <path d="M510 648 L590 648 L590 700" stroke="#2C6E49" stroke-width="1.5" fill="none" marker-end="url(#arr-reg)"/>
+      <rect x="506" y="700" width="168" height="42" rx="6" fill="#EEF2E8" stroke="#2C6E49" stroke-width="1.5"/>
+      <text x="590" y="717" text-anchor="middle" dominant-baseline="central" fill="#1A4030" font-family="IBM Plex Mono,monospace" font-size="11.5" font-weight="600">regularQueue.dequeue()</text>
+      <text x="590" y="733" text-anchor="middle" dominant-baseline="central" fill="#2C6E49" font-family="IBM Plex Mono,monospace" font-size="10">oldest order first (FIFO)</text>
+
+      <!-- Both merge → Complete -->
+      <path d="M270 742 L270 784 L356 784" stroke="#5A5854" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+      <path d="M590 742 L590 784 L504 784" stroke="#5A5854" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+      <!-- ─── COMPLETE ─── -->
+      <rect x="305" y="762" width="250" height="52" rx="26" fill="#1A1917" stroke="none"/>
+      <text x="430" y="789" text-anchor="middle" dominant-baseline="central" fill="#F7F6F3" font-family="IBM Plex Sans,sans-serif" font-size="14" font-weight="600">Order processed ✓</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     SECTION 2 — INTERFACE DEFINITION
+══════════════════════════════════════ -->
+<section>
+  <h2><span class="sec-num">2</span>Interface Definition — <code style="font-family:var(--mono);font-size:14px;">OrderQueue&lt;T&gt;</code></h2>
+
+  <div class="interface-grid">
+
+    <!-- Card 1: Interface -->
+    <div class="iface-card">
+      <div class="iface-card-header">
+        <h3>OrderQueue.java</h3>
+        <span class="tag" style="background:#EDF1FA;color:#2456A4;border:1px solid #B0C2E8;">interface</span>
+      </div>
+<pre><span class="cm">/**
+ * OrderQueue — generic interface for all queue types.
+ * Supports both FIFO (regular) and priority-based (VIP).
+ *
+ * T09 – Phase 3 Design | VinTony POS Loyalty System
+ */</span>
+<span class="kw">public interface</span> <span class="tp">OrderQueue</span> {
+
+    <span class="cm">/**
+     * Add an order to the queue.
+     * Regular: adds to tail (FIFO)
+     * VIP: inserts by loyaltyPoints (max-heap)
+     */</span>
+    <span class="kw">void</span> <span class="fn">enqueue</span>(<span class="tp">Order</span> order);
+
+    <span class="cm">/**
+     * Remove and return the highest-priority order.
+     * Regular: removes from head (FIFO)
+     * VIP: removes order with most loyaltyPoints
+     *
+     * @throws NoSuchElementException if queue is empty
+     */</span>
+    <span class="tp">Order</span> <span class="fn">dequeue</span>();
+
+    <span class="cm">/**
+     * Return the next order WITHOUT removing it.
+     * Useful for display / preview logic.
+     *
+     * @throws NoSuchElementException if queue is empty
+     */</span>
+    <span class="tp">Order</span> <span class="fn">peek</span>();
+
+    <span class="cm">/** Number of orders currently waiting. */</span>
+    <span class="kw">int</span> <span class="fn">size</span>();
+
+    <span class="cm">/** True if no orders are waiting. */</span>
+    <span class="kw">boolean</span> <span class="fn">isEmpty</span>();
+}</pre>
+    </div>
+
+    <!-- Card 2: RegularOrderQueue -->
+    <div class="iface-card">
+      <div class="iface-card-header">
+        <h3>RegularOrderQueue.java</h3>
+        <span class="tag" style="background:#EEF2E8;color:#2C6E49;border:1px solid #B5CFA8;">FIFO</span>
+      </div>
+<pre><span class="cm">/**
+ * Regular FIFO queue — backed by LinkedList.
+ * First order in = first order out.
+ */</span>
+<span class="kw">public class</span> <span class="tp">RegularOrderQueue</span>
+        <span class="kw">implements</span> <span class="tp">OrderQueue</span> {
+
+    <span class="kw">private final</span> <span class="tp">LinkedList</span>&lt;<span class="tp">Order</span>&gt; queue
+            = <span class="kw">new</span> <span class="tp">LinkedList</span>&lt;&gt;();
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">enqueue</span>(<span class="tp">Order</span> order) {
+        queue.<span class="fn">addLast</span>(order);   <span class="cm">// O(1)</span>
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public</span> <span class="tp">Order</span> <span class="fn">dequeue</span>() {
+        <span class="kw">if</span> (<span class="fn">isEmpty</span>())
+            <span class="kw">throw new</span> <span class="tp">NoSuchElementException</span>();
+        <span class="kw">return</span> queue.<span class="fn">removeFirst</span>();  <span class="cm">// O(1)</span>
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public</span> <span class="tp">Order</span> <span class="fn">peek</span>() {
+        <span class="kw">if</span> (<span class="fn">isEmpty</span>())
+            <span class="kw">throw new</span> <span class="tp">NoSuchElementException</span>();
+        <span class="kw">return</span> queue.<span class="fn">peekFirst</span>();
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public int</span> <span class="fn">size</span>()    { <span class="kw">return</span> queue.<span class="fn">size</span>(); }
+    <span class="an">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">isEmpty</span>() { <span class="kw">return</span> queue.<span class="fn">isEmpty</span>(); }
+}</pre>
+    </div>
+
+    <!-- Card 3: VIPOrderQueue -->
+    <div class="iface-card">
+      <div class="iface-card-header">
+        <h3>VIPOrderQueue.java</h3>
+        <span class="tag" style="background:#FEF3EB;color:#C8581A;border:1px solid #F2C49A;">PriorityQueue</span>
+      </div>
+<pre><span class="cm">/**
+ * VIP queue — backed by java.util.PriorityQueue.
+ * Orders with MORE loyaltyPoints are dequeued first.
+ * Tie-break: earlier orderTime wins (FIFO within tier).
+ */</span>
+<span class="kw">public class</span> <span class="tp">VIPOrderQueue</span>
+        <span class="kw">implements</span> <span class="tp">OrderQueue</span> {
+
+    <span class="cm">// max-heap: higher loyalty = higher priority</span>
+    <span class="kw">private final</span> <span class="tp">PriorityQueue</span>&lt;<span class="tp">Order</span>&gt; queue =
+        <span class="kw">new</span> <span class="tp">PriorityQueue</span>&lt;&gt;(
+            <span class="tp">Comparator</span>
+              .<span class="fn">comparingInt</span>((<span class="tp">Order</span> o) ->
+                  o.<span class="fn">getCustomer</span>().<span class="fn">getLoyaltyPoints</span>())
+              .<span class="fn">reversed</span>()
+              .<span class="fn">thenComparing</span>(<span class="tp">Order</span>::<span class="fn">getOrderTime</span>)
+        );
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">enqueue</span>(<span class="tp">Order</span> order) {
+        queue.<span class="fn">offer</span>(order);   <span class="cm">// O(log n)</span>
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public</span> <span class="tp">Order</span> <span class="fn">dequeue</span>() {
+        <span class="kw">if</span> (<span class="fn">isEmpty</span>())
+            <span class="kw">throw new</span> <span class="tp">NoSuchElementException</span>();
+        <span class="kw">return</span> queue.<span class="fn">poll</span>();   <span class="cm">// O(log n)</span>
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public</span> <span class="tp">Order</span> <span class="fn">peek</span>() {
+        <span class="kw">if</span> (<span class="fn">isEmpty</span>())
+            <span class="kw">throw new</span> <span class="tp">NoSuchElementException</span>();
+        <span class="kw">return</span> queue.<span class="fn">peek</span>();
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public int</span> <span class="fn">size</span>()    { <span class="kw">return</span> queue.<span class="fn">size</span>(); }
+    <span class="an">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">isEmpty</span>() { <span class="kw">return</span> queue.<span class="fn">isEmpty</span>(); }
+}</pre>
+    </div>
+
+    <!-- Card 4: OrderController integration -->
+    <div class="iface-card">
+      <div class="iface-card-header">
+        <h3>OrderController.java (excerpt)</h3>
+        <span class="tag" style="background:#F3F0ED;color:#5A5854;border:1px solid #C8C5BD;">controller</span>
+      </div>
+<pre><span class="kw">public class</span> <span class="tp">OrderController</span> {
+
+    <span class="kw">private final</span> <span class="tp">OrderQueue</span> vipQueue
+            = <span class="kw">new</span> <span class="tp">VIPOrderQueue</span>();
+    <span class="kw">private final</span> <span class="tp">OrderQueue</span> regularQueue
+            = <span class="kw">new</span> <span class="tp">RegularOrderQueue</span>();
+
+    <span class="cm">/** Route incoming order to correct queue. */</span>
+    <span class="kw">public void</span> <span class="fn">placeOrder</span>(<span class="tp">Order</span> order) {
+        <span class="kw">if</span> (order.<span class="fn">isVip</span>())
+            vipQueue.<span class="fn">enqueue</span>(order);
+        <span class="kw">else</span>
+            regularQueue.<span class="fn">enqueue</span>(order);
+    }
+
+    <span class="cm">/**
+     * Dequeue next order for processing.
+     * VIP queue is always drained first.
+     */</span>
+    <span class="kw">public</span> <span class="tp">Order</span> <span class="fn">processNext</span>() {
+        <span class="kw">if</span> (!vipQueue.<span class="fn">isEmpty</span>())
+            <span class="kw">return</span> vipQueue.<span class="fn">dequeue</span>();
+        <span class="kw">if</span> (!regularQueue.<span class="fn">isEmpty</span>())
+            <span class="kw">return</span> regularQueue.<span class="fn">dequeue</span>();
+        <span class="kw">throw new</span> <span class="tp">NoSuchElementException</span>(
+            <span class="st">"No pending orders"</span>);
+    }
+
+    <span class="kw">public int</span> <span class="fn">getQueueSize</span>() {
+        <span class="kw">return</span> vipQueue.<span class="fn">size</span>()
+             + regularQueue.<span class="fn">size</span>();
+    }
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     SECTION 3 — COMPLEXITY TABLE
+══════════════════════════════════════ -->
+<section>
+  <h2><span class="sec-num">3</span>Time Complexity</h2>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>Operation</th>
+          <th>Method</th>
+          <th>RegularOrderQueue (LinkedList)</th>
+          <th>VIPOrderQueue (PriorityQueue)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Insert order</td>
+          <td><code style="font-family:var(--mono);font-size:12px;">enqueue()</code></td>
+          <td class="td-good">O(1)</td>
+          <td class="td-ok">O(log n)</td>
+        </tr>
+        <tr>
+          <td>Remove next</td>
+          <td><code style="font-family:var(--mono);font-size:12px;">dequeue()</code></td>
+          <td class="td-good">O(1)</td>
+          <td class="td-ok">O(log n)</td>
+        </tr>
+        <tr>
+          <td>View next</td>
+          <td><code style="font-family:var(--mono);font-size:12px;">peek()</code></td>
+          <td class="td-good">O(1)</td>
+          <td class="td-good">O(1)</td>
+        </tr>
+        <tr>
+          <td>Check empty</td>
+          <td><code style="font-family:var(--mono);font-size:12px;">isEmpty()</code></td>
+          <td class="td-good">O(1)</td>
+          <td class="td-good">O(1)</td>
+        </tr>
+        <tr>
+          <td>Queue size</td>
+          <td><code style="font-family:var(--mono);font-size:12px;">size()</code></td>
+          <td class="td-good">O(1)</td>
+          <td class="td-good">O(1)</td>
+        </tr>
+        <tr>
+          <td>Space</td>
+          <td>—</td>
+          <td class="td-good">O(n)</td>
+          <td class="td-good">O(n)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>Tại sao dùng PriorityQueue cho VIP?</strong><br>
+    <code style="font-family:var(--mono);font-size:12px;">java.util.PriorityQueue</code> implement min-heap. Ta dùng <code style="font-family:var(--mono);font-size:12px;">.reversed()</code> trên comparator để biến thành max-heap — order của customer có <strong>loyaltyPoints cao hơn</strong> sẽ được dequeue trước, dù đến sau trong cùng VIP segment. Tie-break bằng <code style="font-family:var(--mono);font-size:12px;">orderTime</code> đảm bảo fairness khi hai customer cùng điểm.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     SECTION 4 — DESIGN DECISIONS
+══════════════════════════════════════ -->
+<section>
+  <h2><span class="sec-num">4</span>Design Decisions</h2>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;">
+      <div style="font-size:11px;font-family:var(--mono);color:var(--text-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px;">Pattern</div>
+      <div style="font-weight:600;margin-bottom:8px;font-size:14px;">Interface-first</div>
+      <div style="font-size:13px;color:var(--text-2);line-height:1.6;">
+        <code style="font-family:var(--mono);font-size:11px;">OrderQueue</code> là interface. Controller chỉ biết interface — dễ swap implementation sau này (e.g. Redis queue khi scale).
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;">
+      <div style="font-size:11px;font-family:var(--mono);color:var(--text-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px;">Priority rule</div>
+      <div style="font-weight:600;margin-bottom:8px;font-size:14px;">Loyalty points</div>
+      <div style="font-size:13px;color:var(--text-2);line-height:1.6;">
+        VIP priority dựa trên <code style="font-family:var(--mono);font-size:11px;">Customer.loyaltyPoints</code> — tích hợp tự nhiên với loyalty system. Customer platinum (nhiều điểm hơn) được phục vụ trước gold.
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;">
+      <div style="font-size:11px;font-family:var(--mono);color:var(--text-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px;">Fairness</div>
+      <div style="font-weight:600;margin-bottom:8px;font-size:14px;">VIP trước, FIFO sau</div>
+      <div style="font-size:13px;color:var(--text-2);line-height:1.6;">
+        <code style="font-family:var(--mono);font-size:11px;">processNext()</code> drain hết VIP queue trước. Regular customers không bị block vô hạn — VIP queue rỗng thì regular queue chạy ngay.
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

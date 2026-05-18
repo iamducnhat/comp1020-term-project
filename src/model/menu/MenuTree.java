@@ -1,3 +1,5 @@
+package model.menu;
+
 public class MenuTree {
     private MenuNode root;
 

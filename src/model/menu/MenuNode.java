@@ -1,3 +1,5 @@
+package model.menu;
+
 import java.util.ArrayList;
 import java.util.List;
 

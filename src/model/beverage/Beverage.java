@@ -1,76 +1,35 @@
 package model.beverage;
 
+import java.util.Collections;
+import java.util.Map;
+
 /**
- * Abstract base class for all beverages in the coffee shop.
- * Demonstrates Abstraction and Encapsulation (OOP principles).
+ * Abstract base for all drinks (Coffee, Tea, and decorated variants).
  *
- * Subclasses must implement {@link #calculatePrice()} to define
- * their own pricing logic (Polymorphism).
+ * OOP: Abstraction — defines common contract for the whole beverage hierarchy.
+ * Decorator Pattern root — ToppingDecorator also extends this class.
  */
 public abstract class Beverage {
 
-    private String name;
-    private Size size;
-    private double basePrice;
+    protected String name;
+    protected Size   size;
 
-    /**
-     * Constructs a Beverage with the given name, size, and base price.
-     *
-     * @param name      the display name of the beverage
-     * @param size      the size (S, M, or L)
-     * @param basePrice the base price before size multiplier
-     */
-    public Beverage(String name, Size size, double basePrice) {
-        this.name = name;
-        this.size = size;
-        this.basePrice = basePrice;
-    }
-
-    /**
-     * Calculates the final price of this beverage.
-     * Each subclass implements its own pricing logic (Polymorphism).
-     *
-     * @return the calculated price
-     */
+    /** Calculate total price including size and any decorators. */
     public abstract double calculatePrice();
 
-    /**
-     * Returns a human-readable description of this beverage.
-     *
-     * @return description string
-     */
-    public String getDescription() {
-        return name + " (" + size + ")";
+    /** Human-readable description (e.g. "Latte (M) + Milk Foam"). */
+    public abstract String getDescription();
+
+    /** Ingredients consumed when this beverage is processed. */
+    public Map<String, Integer> getIngredientRequirements() {
+        return Collections.emptyMap();
     }
 
-    // ── Getters & Setters (Encapsulation) ──────────────────────────
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Size getSize() {
-        return size;
-    }
-
-    public void setSize(Size size) {
-        this.size = size;
-    }
-
-    public double getBasePrice() {
-        return basePrice;
-    }
-
-    public void setBasePrice(double basePrice) {
-        this.basePrice = basePrice;
-    }
+    public String getName() { return name; }
+    public Size   getSize() { return size; }
 
     @Override
     public String toString() {
-        return getDescription() + " - $" + String.format("%.2f", calculatePrice());
+        return String.format("%s — %.0f VND", getDescription(), calculatePrice());
     }
 }

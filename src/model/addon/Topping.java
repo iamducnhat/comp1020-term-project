@@ -2,67 +2,78 @@ package model.addon;
 
 import model.beverage.Beverage;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
- * Concrete decorator that adds a topping to a beverage.
- * Each Topping has a name and an additional price that is
- * added to the decorated beverage's price.
+ * Concrete Decorator — represents one topping added to a drink.
  *
- * Multiple toppings can be stacked by wrapping decorators:
- *   new Topping(new Topping(baseBeverage, "Boba", 0.75), "Cream", 0.50)
+ * Usage example:
+ *   Beverage b = new Coffee(CoffeeType.LATTE, Size.M);
+ *   b = new Topping(b, ToppingType.MILK_FOAM);
+ *   b = new Topping(b, ToppingType.CARAMEL_SYRUP);
+ *   // b.calculatePrice() => 30000 + 5000 (M) + 8000 + 10000
  */
 public class Topping extends ToppingDecorator {
 
-    private String toppingName;
-    private double toppingPrice;
+    public enum ToppingType {
+        MILK_FOAM("Milk Foam",         8_000),
+        CARAMEL_SYRUP("Caramel Syrup", 10_000),
+        WHIPPED_CREAM("Whipped Cream", 12_000),
+        PEARL("Pearl (Boba)",          10_000),
+        COCONUT_JELLY("Coconut Jelly", 9_000),
+        EXTRA_SHOT("Extra Espresso",   15_000);
 
-    /**
-     * Constructs a Topping decorator.
-     *
-     * @param beverage     the beverage to add a topping to
-     * @param toppingName  the name of the topping (e.g. "Boba", "Whipped Cream")
-     * @param toppingPrice the extra cost of this topping
-     */
-    public Topping(Beverage beverage, String toppingName, double toppingPrice) {
-        super(beverage);
-        this.toppingName = toppingName;
-        this.toppingPrice = toppingPrice;
+        private final String label;
+        private final double price;
+
+        ToppingType(String label, double price) {
+            this.label = label;
+            this.price = price;
+        }
+
+        public String getLabel() { return label; }
+        public double getPrice() { return price; }
     }
 
-    /**
-     * Price = decorated beverage price + topping price.
-     *
-     * @return the total price including this topping
-     */
+    private final ToppingType toppingType;
+
+    public Topping(Beverage beverage, ToppingType toppingType) {
+        super(beverage);
+        this.toppingType = toppingType;
+    }
+
     @Override
     public double calculatePrice() {
-        return getDecoratedBeverage().calculatePrice() + toppingPrice;
+        return beverage.calculatePrice() + toppingType.getPrice();
     }
 
-    /**
-     * Description appends the topping info to the decorated beverage's description.
-     *
-     * @return combined description
-     */
     @Override
     public String getDescription() {
-        return getDecoratedBeverage().getDescription() + " + " + toppingName;
+        return beverage.getDescription() + " + " + toppingType.getLabel();
     }
 
-    // ── Getters & Setters ──────────────────────────────────────────
-
-    public String getToppingName() {
-        return toppingName;
+    @Override
+    public Map<String, Integer> getIngredientRequirements() {
+        Map<String, Integer> ingredients = new LinkedHashMap<>(beverage.getIngredientRequirements());
+        String ingredientName = switch (toppingType) {
+            case MILK_FOAM -> "Whole Milk";
+            case CARAMEL_SYRUP -> "Caramel Syrup";
+            case WHIPPED_CREAM -> "Whipped Cream";
+            case PEARL -> "Boba Pearls";
+            case COCONUT_JELLY -> "Coconut Jelly";
+            case EXTRA_SHOT -> "Espresso Beans";
+        };
+        int amount = switch (toppingType) {
+            case MILK_FOAM -> 60;
+            case CARAMEL_SYRUP -> 25;
+            case WHIPPED_CREAM -> 30;
+            case PEARL, COCONUT_JELLY -> 40;
+            case EXTRA_SHOT -> 10;
+        };
+        ingredients.merge(ingredientName, amount, Integer::sum);
+        return ingredients;
     }
 
-    public void setToppingName(String toppingName) {
-        this.toppingName = toppingName;
-    }
-
-    public double getToppingPrice() {
-        return toppingPrice;
-    }
-
-    public void setToppingPrice(double toppingPrice) {
-        this.toppingPrice = toppingPrice;
-    }
+    public ToppingType getToppingType() { return toppingType; }
 }

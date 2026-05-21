@@ -1,129 +1,89 @@
 package view;
 
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTree;
-import javax.swing.SwingConstants;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.TreeSelectionModel;
-import model.beverage.Beverage;
-import model.beverage.Coffee;
-import model.beverage.Size;
-import model.beverage.Tea;
+import controller.CustomerController;
+import controller.InventoryController;
+import controller.OrderController;
+import controller.VoucherController;
 
+import javax.swing.*;
+import java.awt.*;
+
+/**
+ * Main application window — uses JTabbedPane with MVC architecture.
+ *
+ * Tabs:
+ *   1. Orders       — place & process orders
+ *   2. Customers    — manage customer loyalty
+ *   3. Inventory    — monitor stock
+ *   4. Vouchers     — manage discount codes
+ */
 public class MainFrame extends JFrame {
 
-    private final JTextArea detailArea;
+    // ── Shared controllers (single instance per session) ─────────────────────
+    private final OrderController     orderCtrl     = new OrderController();
+    private final CustomerController  customerCtrl  = new CustomerController();
+    private final InventoryController inventoryCtrl = new InventoryController();
+    private final VoucherController   voucherCtrl   = new VoucherController();
+
+    private CustomerPanel customerPanel;
+    private InventoryPanel inventoryPanel;
+    private VoucherPanel voucherPanel;
 
     public MainFrame() {
-        setTitle("VinTony Coffee Shop - POS & Loyalty System");
-        setSize(1000, 700);
+        super("VinTony Coffee POS & Loyalty System");
+
+        // Seed sample data
+        customerCtrl.seedSampleCustomers();
+        voucherCtrl.seedSampleVouchers();
+
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(900, 680);
+        setMinimumSize(new Dimension(800, 580));
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
 
-        JLabel titleLabel = new JLabel("Drink Menu", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
-        add(titleLabel, BorderLayout.NORTH);
+        // ── Tab pane ──────────────────────────────────────────────────────────
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
-        DefaultMutableTreeNode rootNode = buildMenuTree();
-        JTree menuTree = new JTree(rootNode);
-        menuTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+        customerPanel = new CustomerPanel(customerCtrl);
+        inventoryPanel = new InventoryPanel(inventoryCtrl);
+        voucherPanel = new VoucherPanel(voucherCtrl);
 
-        JScrollPane treeScrollPane = new JScrollPane(menuTree);
-        treeScrollPane.setPreferredSize(new Dimension(320, 0));
-        add(treeScrollPane, BorderLayout.WEST);
+        tabs.addTab("🧾 Orders", buildOrderPanel());
+        tabs.addTab("👥 Customers", customerPanel);
+        tabs.addTab("📦 Inventory", inventoryPanel);
+        tabs.addTab("🏷 Vouchers", voucherPanel);
 
-        detailArea = new JTextArea();
-        detailArea.setEditable(false);
-        detailArea.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        add(new JScrollPane(detailArea), BorderLayout.CENTER);
+        // ── Status bar ───────────────────────────────────────────────────────
+        JLabel statusBar = new JLabel(" VinTony POS v1.0  |  COMP1020 Spring 2026");
+        statusBar.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+        statusBar.setFont(new Font("Segoe UI", Font.ITALIC, 11));
 
-        menuTree.addTreeSelectionListener(event -> updateDetailArea(menuTree));
+        add(tabs, BorderLayout.CENTER);
+        add(statusBar, BorderLayout.SOUTH);
     }
 
-    private DefaultMutableTreeNode buildMenuTree() {
-        DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode("Menu");
-        Map<String, Map<String, List<Beverage>>> menuData = getMenuData();
+    private JPanel buildOrderPanel() {
+        return new OrderPanel(orderCtrl, customerCtrl, voucherCtrl, inventoryCtrl, this::refreshDataPanels);
+    }
 
-        for (Map.Entry<String, Map<String, List<Beverage>>> categoryEntry : menuData.entrySet()) {
-            DefaultMutableTreeNode categoryNode = new DefaultMutableTreeNode(categoryEntry.getKey());
+    private void refreshDataPanels() {
+        if (customerPanel != null) customerPanel.refreshList();
+        if (inventoryPanel != null) inventoryPanel.refreshList();
+        if (voucherPanel != null) voucherPanel.refreshList();
+    }
 
-            for (Map.Entry<String, List<Beverage>> drinkEntry : categoryEntry.getValue().entrySet()) {
-                DefaultMutableTreeNode drinkNode = new DefaultMutableTreeNode(drinkEntry.getKey());
-
-                for (Beverage beverage : drinkEntry.getValue()) {
-                    drinkNode.add(new DefaultMutableTreeNode(beverage));
+    // ── Helper: apply a simple modern look ───────────────────────────────────
+    public static void applyLookAndFeel() {
+        try {
+            // Try system L&F; fall back to Nimbus
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    UIManager.setLookAndFeel(info.getClassName());
+                    return;
                 }
-
-                categoryNode.add(drinkNode);
             }
-
-            rootNode.add(categoryNode);
-        }
-
-        return rootNode;
-    }
-
-    private void updateDetailArea(JTree menuTree) {
-        DefaultMutableTreeNode selectedNode =
-                (DefaultMutableTreeNode) menuTree.getLastSelectedPathComponent();
-
-        if (selectedNode == null) {
-            return;
-        }
-
-        Object selectedObject = selectedNode.getUserObject();
-        if (selectedObject instanceof Beverage beverage) {
-            detailArea.setText(
-                    "Selected beverage:\n"
-                            + "Type: " + beverage.getClass().getSimpleName() + "\n"
-                            + "Name: " + beverage.getName() + "\n"
-                            + "Size: " + beverage.getSize() + "\n"
-                            + "Price: $" + String.format("%.2f", beverage.calculatePrice()));
-            return;
-        }
-
-        detailArea.setText("Selected:\n" + selectedObject);
-    }
-
-    private Map<String, Map<String, List<Beverage>>> getMenuData() {
-        Map<String, Map<String, List<Beverage>>> menuData = new LinkedHashMap<>();
-
-        Map<String, List<Beverage>> coffeeMenu = new LinkedHashMap<>();
-        coffeeMenu.put("Espresso", createCoffeeOptions("Espresso", 2.0));
-        coffeeMenu.put("Latte", createCoffeeOptions("Latte", 3.0));
-        menuData.put("Coffee", coffeeMenu);
-
-        Map<String, List<Beverage>> teaMenu = new LinkedHashMap<>();
-        teaMenu.put("Green Tea", createTeaOptions("Green Tea", 1.5));
-        menuData.put("Tea", teaMenu);
-
-        return menuData;
-    }
-
-    private List<Beverage> createCoffeeOptions(String name, double basePrice) {
-        List<Beverage> options = new ArrayList<>();
-        for (Size size : Size.values()) {
-            options.add(new Coffee(name, size, basePrice));
-        }
-        return options;
-    }
-
-    private List<Beverage> createTeaOptions(String name, double basePrice) {
-        List<Beverage> options = new ArrayList<>();
-        for (Size size : Size.values()) {
-            options.add(new Tea(name, size, basePrice));
-        }
-        return options;
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ignored) { /* keep default */ }
     }
 }

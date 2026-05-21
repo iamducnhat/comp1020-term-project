@@ -1,113 +1,130 @@
 package controller;
 
-import java.util.Collection;
-import java.util.HashMap;
 import model.customer.Customer;
+import util.SortUtil;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Controller for managing customer operations.
- * Manages customer data using a HashMap with phone number as the key.
+ * Manages all customer records.
+ *
+ * Data Structure: HashMap<String, Customer> keyed by phone number.
+ * Provides O(1) lookup, add, and update.
+ *
+ * MVC: Controller layer — sits between CustomerPanel (view) and Customer (model).
  */
 public class CustomerController {
-    private HashMap<String, Customer> customers;
+
+    // Key: phone number (unique customer ID)
+    private final Map<String, Customer> customers = new HashMap<>();
+
+    // ── CRUD ─────────────────────────────────────────────────────────────────
 
     /**
-     * Constructs a CustomerController and initializes the customers HashMap.
+     * Register a new customer.
+     * @throws IllegalArgumentException if phone already exists.
      */
-    public CustomerController() {
-        this.customers = new HashMap<>();
+    public Customer registerCustomer(String name, String phone) {
+        String key = normalizePhone(phone);
+        if (customers.containsKey(key))
+            throw new IllegalArgumentException("Customer with phone " + phone + " already exists.");
+
+        Customer c = new Customer(name, key);
+        customers.put(key, c);
+        return c;
     }
 
     /**
-     * Adds a new customer to the system.
-     * @param customer the customer to add
-     * @return true if customer was added successfully, false if customer with same phone number already exists
+     * O(1) lookup by phone.
+     * @return Customer or null if not found.
      */
-    public boolean addCustomer(Customer customer) {
-        if (customer == null || customer.getPhoneNumber() == null || customer.getPhoneNumber().trim().isEmpty()) {
-            return false;
-        }
+    public Customer findByPhone(String phone) {
+        if (phone == null || phone.isBlank()) return null;
+        return customers.get(normalizePhone(phone));
+    }
 
-        if (customers.containsKey(customer.getPhoneNumber())) {
-            return false; // Customer already exists
-        }
+    /**
+     * Find or auto-register: used at POS when phone is entered.
+     * If customer doesn't exist, registers them with a default name.
+     */
+    public Customer findOrRegister(String name, String phone) {
+        Customer existing = findByPhone(phone);
+        if (existing != null) return existing;
+        return registerCustomer(name, phone);
+    }
 
-        customers.put(customer.getPhoneNumber(), customer);
+    public boolean removeCustomer(String phone) {
+        if (phone == null || phone.isBlank()) return false;
+        return customers.remove(normalizePhone(phone)) != null;
+    }
+
+    public boolean updateName(String phone, String newName) {
+        if (phone == null || phone.isBlank()) return false;
+        Customer c = findByPhone(phone);
+        if (c == null) return false;
+        c.setName(newName);
         return true;
     }
 
-    /**
-     * Finds a customer by phone number.
-     * @param phoneNumber the phone number to search for
-     * @return the Customer if found, null otherwise
-     */
-    public Customer findByPhone(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
-            return null;
-        }
-        return customers.get(phoneNumber);
-    }
-
-    /**
-     * Updates the loyalty points for a customer by adding points.
-     * @param phoneNumber the phone number of the customer
-     * @param points the number of points to add
-     * @return true if update was successful, false if customer not found
-     */
-    public boolean addPoints(String phoneNumber, int points) {
-        Customer customer = findByPhone(phoneNumber);
-        if (customer == null) {
-            return false;
-        }
-        customer.addPoints(points);
+    public boolean updateEmail(String phone, String email) {
+        if (phone == null || phone.isBlank()) return false;
+        Customer c = findByPhone(phone);
+        if (c == null) return false;
+        c.setEmail(email);
         return true;
     }
 
-    /**
-     * Redeems loyalty points for a customer.
-     * @param phoneNumber the phone number of the customer
-     * @param points the number of points to redeem
-     * @return true if redemption was successful, false if customer not found or insufficient points
-     */
-    public boolean redeemPoints(String phoneNumber, int points) {
-        Customer customer = findByPhone(phoneNumber);
-        if (customer == null) {
-            return false;
-        }
-        return customer.redeemPoints(points);
+    // ── Points ────────────────────────────────────────────────────────────────
+    public void awardPoints(String phone, int points) {
+        Customer c = findByPhone(phone);
+        if (c != null) c.addPoints(points);
     }
 
-    /**
-     * Deletes a customer from the system.
-     * @param phoneNumber the phone number of the customer to delete
-     * @return true if customer was deleted successfully, false if customer not found
-     */
-    public boolean deleteCustomer(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
-            return false;
-        }
-
-        if (customers.containsKey(phoneNumber)) {
-            customers.remove(phoneNumber);
-            return true;
-        }
-
-        return false;
+    public boolean redeemPoints(String phone, int points) {
+        Customer c = findByPhone(phone);
+        return c != null && c.redeemPoints(points);
     }
 
-    /**
-     * Gets all customers in the system.
-     * @return a collection of all customers
-     */
+    // ── Queries ───────────────────────────────────────────────────────────────
     public Collection<Customer> getAllCustomers() {
-        return customers.values();
+        return Collections.unmodifiableCollection(customers.values());
     }
 
-    /**
-     * Gets the total number of customers.
-     * @return the number of customers in the system
-     */
-    public int getCustomerCount() {
-        return customers.size();
+    public List<Customer> getLeaderboard() {
+        return SortUtil.sortByPointsDesc(customers.values().stream().toList());
+    }
+
+    public List<Customer> getAllSortedByName() {
+        return SortUtil.sortByName(customers.values().stream().toList());
+    }
+
+    public boolean exists(String phone) {
+        if (phone == null || phone.isBlank()) return false;
+        return customers.containsKey(normalizePhone(phone));
+    }
+
+    public int getTotalCustomers() { return customers.size(); }
+
+    // ── Seed data ─────────────────────────────────────────────────────────────
+    public void seedSampleCustomers() {
+        Customer alice = registerCustomer("Alice Nguyen",  "0901234567");
+        alice.addPoints(250);  // VIP
+
+        Customer bob = registerCustomer("Bob Tran",    "0912345678");
+        bob.addPoints(80);
+
+        registerCustomer("Carol Le",     "0923456789");
+        registerCustomer("David Pham",   "0934567890");
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    private String normalizePhone(String phone) {
+        if (phone == null || phone.isBlank())
+            throw new IllegalArgumentException("Phone number cannot be blank");
+        return phone.trim();
     }
 }

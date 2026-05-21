@@ -1,40 +1,75 @@
 package model.beverage;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
- * Concrete beverage representing a coffee drink.
- * Inherits from {@link Beverage} (Inheritance).
+ * Concrete coffee drink.
+ * OOP: Inheritance from Beverage, Polymorphism via calculatePrice().
  *
- * Coffee has a 10% surcharge on top of the size-adjusted price
- * to reflect premium bean costs.
+ * Base prices (S):
+ *   Espresso   25,000
+ *   Latte      30,000
+ *   Cappuccino 32,000
+ *   Americano  28,000
  */
 public class Coffee extends Beverage {
 
-    private static final double COFFEE_SURCHARGE = 0.10; // 10% premium
+    public enum CoffeeType {
+        ESPRESSO("Espresso",   25_000),
+        LATTE("Latte",         30_000),
+        CAPPUCCINO("Cappuccino", 32_000),
+        AMERICANO("Americano", 28_000);
 
-    /**
-     * Constructs a Coffee beverage.
-     *
-     * @param name      the coffee variant name (e.g. "Americano", "Latte")
-     * @param size      the drink size
-     * @param basePrice the base price before adjustments
-     */
-    public Coffee(String name, Size size, double basePrice) {
-        super(name, size, basePrice);
+        private final String label;
+        private final double basePrice;
+
+        CoffeeType(String label, double basePrice) {
+            this.label     = label;
+            this.basePrice = basePrice;
+        }
+
+        public String getLabel()      { return label; }
+        public double getBasePrice()  { return basePrice; }
     }
 
-    /**
-     * Calculates the price: basePrice × sizeMultiplier × (1 + surcharge).
-     * Polymorphic implementation specific to Coffee.
-     *
-     * @return the final coffee price
-     */
+    private final CoffeeType type;
+
+    public Coffee(CoffeeType type, Size size) {
+        this.type = type;
+        this.size = size;
+        this.name = type.getLabel();
+    }
+
     @Override
     public double calculatePrice() {
-        return getBasePrice() * getSize().getMultiplier() * (1 + COFFEE_SURCHARGE);
+        return type.getBasePrice() + size.getExtraPrice();
     }
 
     @Override
     public String getDescription() {
-        return "Coffee: " + super.getDescription();
+        return name + " (" + size.getLabel() + ")";
     }
+
+    @Override
+    public Map<String, Integer> getIngredientRequirements() {
+        int factor = switch (size) {
+            case S -> 1;
+            case M -> 2;
+            case L -> 3;
+        };
+
+        Map<String, Integer> ingredients = new LinkedHashMap<>();
+        ingredients.put("Espresso Beans", 18 * factor);
+        if (type == CoffeeType.LATTE || type == CoffeeType.CAPPUCCINO) {
+            ingredients.put("Whole Milk", 160 * factor);
+        }
+        if (type == CoffeeType.CAPPUCCINO) {
+            ingredients.put("Whipped Cream", 20 * factor);
+        }
+        ingredients.put("Sugar", 5 * factor);
+        return ingredients;
+    }
+
+    public CoffeeType getType() { return type; }
 }

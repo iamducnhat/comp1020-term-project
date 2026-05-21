@@ -1,25 +1,25 @@
 package model.beverage;
 
 /**
- * Enum representing drink sizes.
- * Each size has a price multiplier applied to the base price.
+ * Drink size options — used across all Beverage subclasses.
+ * Affects base price calculation.
  */
 public enum Size {
-    S(1.0),
-    M(1.3),
-    L(1.6);
+    S("Small",  0),
+    M("Medium", 5_000),
+    L("Large",  10_000);
 
-    private final double multiplier;
+    private final String label;
+    private final double extraPrice;
 
-    Size(double multiplier) {
-        this.multiplier = multiplier;
+    Size(String label, double extraPrice) {
+        this.label      = label;
+        this.extraPrice = extraPrice;
     }
 
-    /**
-     * Returns the price multiplier for this size.
-     * @return the multiplier value
-     */
-    public double getMultiplier() {
-        return multiplier;
-    }
+    public String getLabel()       { return label; }
+    public double getExtraPrice()  { return extraPrice; }
+
+    @Override
+    public String toString() { return label; }
 }

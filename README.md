@@ -1,110 +1,96 @@
-# ☕ VinTony Coffee Shop - POS & Loyalty System
+# VinTony Coffee POS & Loyalty System
 
-**COMP1020 – Spring 2026 Term Project**  
-**Team VinTony – Group 5**
+**COMP1020 Spring 2026 — Team VinTony, Group 5**
 
-## Team Members
-| Name | Student ID | Role |
-|------|-----------|------|
-| Nguyễn Đức Nhật | V202502368 | Team Leader |
-| Đinh Nguyễn Gia Khánh | V202502398 | Developer |
-| Khúc Nhật Minh | V202502361 | Developer |
-| Lê Đức Huy | V202502747 | Developer |
-| Nguyễn Duy Hiếu | V202502909 | Developer |
+VinTony is a Java Swing desktop POS and loyalty system for a coffee shop. The app demonstrates OOP, MVC, design patterns, and the required data structures from the project proposal.
 
-## Project Description
-A Java desktop POS (Point of Sale) and Loyalty System for a coffee shop. The system manages orders, customers, inventory, and vouchers.
+## Features
 
-## Tech Stack
-- **Language:** Java 17+
-- **GUI:** Java Swing
-- **Architecture:** MVC (Model-View-Controller)
+- Order management with active cart, add/remove items, undo/redo, cancel queued orders, and process next order.
+- VIP order priority queue plus regular FIFO queue.
+- Customer registration, update/delete, phone lookup, loyalty point award/redeem, and leaderboard.
+- Voucher creation, validation, checkout discount, one-time use marking, and removal.
+- Inventory tracking with default ingredients, add/restock/consume/remove, low-stock alerts, and automatic stock deduction when orders are processed.
+- Menu and drink creation through Coffee/Tea inheritance, BeverageFactory, and topping Decorator pattern.
 
 ## Project Structure
-```
+
+```text
 src/
-├── Main.java                          # Entry point
-├── model/                             # Model layer
-│   ├── beverage/
-│   │   ├── Beverage.java              # Abstract base class
-│   │   ├── Coffee.java                # Extends Beverage
-│   │   ├── Tea.java                   # Extends Beverage
-│   │   └── Size.java                  # Enum (S/M/L)
-│   ├── addon/
-│   │   ├── ToppingDecorator.java      # Decorator Pattern (abstract)
-│   │   └── Topping.java              # Concrete Decorator
-│   ├── order/
-│   │   ├── Order.java                 # Order with Comparable
-│   │   └── OrderStatus.java           # Enum
-│   ├── customer/
-│   │   └── Customer.java              # Customer with loyalty points
-│   ├── voucher/
-│   │   └── Voucher.java               # Discount voucher
-│   ├── inventory/
-│   │   ├── Ingredient.java            # Ingredient model
-│   │   └── InventoryManager.java      # Singleton Pattern
-│   └── menu/
-│       ├── MenuNode.java              # Tree node
-│       └── MenuTree.java             # Tree structure
-├── controller/                        # Controller layer
-│   ├── OrderController.java           # Queue + PriorityQueue
-│   ├── CustomerController.java        # HashMap lookup
-│   ├── InventoryController.java       # Singleton delegation
-│   └── VoucherController.java         # HashMap lookup
-├── view/                              # View layer (Swing)
-│   ├── MainFrame.java                 # Main window with tabs
-│   ├── OrderPanel.java                # Order management UI
-│   ├── CustomerPanel.java             # Customer management UI
-│   ├── InventoryPanel.java            # Inventory management UI
-│   └── VoucherPanel.java              # Voucher management UI
+├── Main.java
+├── controller/
+│   ├── OrderController.java
+│   ├── OrderQueue.java
+│   ├── RegularOrderQueue.java
+│   ├── VIPOrderQueue.java
+│   ├── CustomerController.java
+│   ├── InventoryController.java
+│   └── VoucherController.java
 ├── factory/
-│   └── BeverageFactory.java           # Factory Pattern
-└── util/
-    ├── ActionHistory.java             # Stack (undo/redo)
-    └── SortUtil.java                  # Sorting & Binary Search
+│   └── BeverageFactory.java
+├── model/
+│   ├── addon/
+│   ├── beverage/
+│   ├── customer/
+│   ├── inventory/
+│   ├── menu/
+│   ├── order/
+│   └── voucher/
+├── util/
+│   ├── ActionHistory.java
+│   └── SortUtil.java
+└── view/
+    ├── MainFrame.java
+    ├── OrderPanel.java
+    ├── CustomerPanel.java
+    ├── InventoryPanel.java
+    └── VoucherPanel.java
 ```
 
-## Design Patterns
-| Pattern | Applied To | Purpose |
-|---------|-----------|---------|
-| **Factory** | `BeverageFactory` | Dynamic beverage creation |
-| **Decorator** | `ToppingDecorator`, `Topping` | Add toppings without modifying base class |
-| **Singleton** | `InventoryManager` | Single global inventory instance |
-| **MVC** | Entire architecture | Separation of concerns |
+## Concepts Covered
 
-## Data Structures & Algorithms
-| DS/Algorithm | Applied To | Complexity |
-|-------------|-----------|------------|
-| **Queue (FIFO)** | Order processing | O(1) |
-| **PriorityQueue** | VIP order processing | O(log n) |
-| **HashMap** | Customer & Inventory lookup | O(1) avg |
-| **Stack** | Undo/redo operations | O(1) |
-| **Tree** | Menu hierarchy | O(log n) |
-| **Sorting** | Orders by time/price, Customers by points | O(n log n) |
-| **Binary Search** | Customer lookup by phone | O(log n) |
+| Requirement | Implementation |
+|---|---|
+| Encapsulation | Customer, Order, Voucher, Ingredient |
+| Inheritance | Coffee and Tea extend Beverage |
+| Polymorphism | `calculatePrice()` and ingredient requirements per beverage type |
+| Abstraction | `Beverage` abstract class and `OrderQueue` interface |
+| Factory Pattern | `BeverageFactory` |
+| Decorator Pattern | `ToppingDecorator`, `Topping` |
+| Singleton Pattern | `InventoryManager` |
+| MVC | `model`, `controller`, and `view` packages |
+| Queue | `RegularOrderQueue` with `LinkedList` |
+| PriorityQueue | `VIPOrderQueue` |
+| HashMap | Customer, voucher, and inventory lookup |
+| Stack | `ActionHistory` undo/redo |
+| Tree | `MenuTree`, `MenuNode` |
+| Sorting/Search | `SortUtil` |
 
-## OOP Principles
-- **Encapsulation:** Private fields with getters/setters
-- **Inheritance:** `Coffee`, `Tea` extend `Beverage`
-- **Polymorphism:** `calculatePrice()` implemented differently per subclass
-- **Abstraction:** `Beverage` abstract class defines common interface
+## Build And Run
 
-## How to Compile & Run
 ```bash
-# Compile
-javac -d out src/**/*.java src/*.java
+./build.sh
+```
 
-# Run
+## Run Feature Smoke Test
+
+This runs the proposal features from code without opening the Swing application:
+
+```bash
+RUN_APP=0 JAVA_HOME=/path/to/jdk-18.0.2.1/Contents/Home ./build.sh
+javac -encoding UTF-8 -cp out -d out-test tests/VinTonyFeatureSmokeTest.java
+java -cp out:out-test VinTonyFeatureSmokeTest
+```
+
+Or manually:
+
+```bash
+find src -name "*.java" -print0 | xargs -0 javac -encoding UTF-8 -sourcepath src -d out
 java -cp out Main
 ```
 
-## Project Timeline
-| Phase | Description | Start | End |
-|-------|------------|-------|-----|
-| 1 | Planning & Analysis | Mar 12 | Mar 26 |
-| 2 | Requirements Definition | Mar 27 | Apr 2 |
-| 3 | Design & Prototyping | Apr 3 | Apr 16 |
-| 4 | Implementation | Apr 17 | May 7 |
-| 5 | Refactoring & Features | May 8 | May 14 |
-| 6 | Testing & Deployment | May 15 | May 21 |
-| 7 | Finalization & Docs | May 22 | May 28 |
+If Java 21/25 crashes on macOS 26 with a HotSpot `SIGBUS` / `CodeHeap::allocate` error, use a stable JDK such as Temurin 18.0.2.1 and run:
+
+```bash
+JAVA_HOME=/path/to/jdk-18.0.2.1/Contents/Home ./build.sh
+```

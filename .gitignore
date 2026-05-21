@@ -4,6 +4,7 @@ out-test/
 *.class
 hs_err_pid*.log
 sources.txt
+study-output/
 
 # IDE files
 .idea/

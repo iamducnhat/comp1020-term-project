@@ -1,0 +1,615 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern} % Scalable vector fonts
+\usepackage{geometry}
+\geometry{margin=1in, headheight=14pt, top=1in} % Set headheight to resolve fancyhdr warnings
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+% Define premium color palette
+\definecolor{primaryblue}{rgb}{0.07, 0.28, 0.5}
+\definecolor{secondarygreen}{rgb}{0.11, 0.37, 0.23}
+\definecolor{codegray}{rgb}{0.96, 0.96, 0.96}
+\definecolor{codecomment}{rgb}{0.35, 0.45, 0.55}
+\definecolor{keywordcolor}{rgb}{0.65, 0.05, 0.25}
+\definecolor{stringcolor}{rgb}{0.1, 0.45, 0.2}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    citecolor=secondarygreen,
+    urlcolor=primaryblue,
+    pdftitle={COMP1020 - Term Project Final Report},
+    pdfauthor={Team VinTony, Group 5}
+}
+
+% Code listing styles
+\lstset{
+    language=Java,
+    backgroundcolor=\color{codegray},
+    basicstyle=\small\ttfamily,
+    keywordstyle=\color{keywordcolor}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{stringcolor},
+    numbers=left,
+    numberstyle=\tiny\color{gray!80},
+    numbersep=8pt,
+    frame=single,
+    rulecolor=\color{gray!20},
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4
+}
+
+% Page numbering and header setup
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{gray!80}{VinTony Coffee POS \& Loyalty System}}
+\lhead{\textcolor{gray!80}{COMP1020 Spring 2026}}
+\cfoot{\thepage}
+
+% Adjust title spacing
+\titleformat{\section}{\large\bfseries\color{primaryblue}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{primaryblue}}{\thesubsection.}{0.5em}{}
+
+\begin{document}
+
+% ─────────────────────────────────────────────────────────────────────────────
+% TITLE BLOCK
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{center}
+    \vspace*{0.5cm}
+    {\large \bfseries VINUNIVERSITY} \\
+    {\large College of Engineering and Computer Science} \\
+    \vspace{0.4cm}
+    {\large COMP1020 -- Object-Oriented Programming \& Data Structures} \\
+    \vspace{0.1cm}
+    {\large Spring 2026} \\
+    \vspace{1.5cm}
+    {\LARGE \bfseries VinTony Coffee POS \& Loyalty System} \\
+    \vspace{0.5cm}
+    {\large \textbf{Term Project Final Report}} \\
+    \vspace{1.5cm}
+    \textbf{Team VinTony, Group 5} \\
+    \vspace{0.2cm}
+    \begin{tabular}{lll}
+        \textbf{Member 1} & Model layer \& UML & (customizable ID) \\
+        \textbf{Member 2} & Controller layer \& History & (customizable ID) \\
+        \textbf{Member 3} & Views, Utils \& Smoke Tests & (customizable ID) \\
+    \end{tabular} \\
+    \vspace{1.5cm}
+    Submission Deadline: June 2, 2026 \\
+\end{center}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% TABLE OF CONTENTS
+% ─────────────────────────────────────────────────────────────────────────────
+\tableofcontents
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 1
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Introduction and Project Overview}
+
+\subsection{Problem Statement and Motivation}
+Small and mid-sized coffee shops in Vietnam typically rely on manual processes for order management, customer tracking, and inventory control. Staff write orders on paper, loyalty cards are stamped manually, and ingredient levels are monitored by eye. This approach is error-prone, slow during peak hours, and makes it nearly impossible to identify high-value (VIP) customers in real time. As caf\'e culture grows rapidly and customers expect faster, more personalised service, there is a clear need for an affordable, integrated Point-of-Sale (POS) system tailored to a single-branch operation.
+
+\subsection{Project Objectives and Scope}
+The VinTony Coffee POS \& Loyalty System is a desktop application built in Java (JDK 18+) with a Java Swing graphical interface. Its primary goals are to:
+\begin{itemize}[noitemsep,topsep=3pt]
+    \item Replace manual order slips with a structured cart-based ordering workflow that supports undo and redo.
+    \item Route orders automatically to a VIP priority queue or a standard FIFO queue based on each customer's loyalty points.
+    \item Award and redeem loyalty points at checkout, and display a ranked leaderboard of top customers.
+    \item Enforce one-time-use discount vouchers with percentage-based discounts.
+    \item Track ingredient inventory in real time, deducting stock when an order is processed and alerting staff when levels fall below defined thresholds.
+\end{itemize}
+The system is scoped to a single branch, operates entirely in memory (no external database), and is intended for use by caf\'e counter staff rather than end customers.
+
+\subsection{Key Features and Functionalities}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Active Cart Management} -- staff add or remove beverages before placing an order; every action is reversible via a generic undo/redo stack capped at 30 entries.
+    \item \textbf{Dual-Queue Order Routing} -- customers with 100 or more loyalty points are routed to a \texttt{PriorityQueue} (max-heap); all others join a \texttt{LinkedList}-backed FIFO queue.
+    \item \textbf{Customer Registration \& Loyalty} -- customers are identified by phone number; points accumulate automatically on each completed order and can be redeemed for discounts.
+    \item \textbf{Voucher System} -- staff generate alphanumeric voucher codes with a configurable percentage discount; each code may only be used once.
+    \item \textbf{Inventory Management} -- a Singleton \texttt{InventoryManager} tracks eight default ingredients; stock is auto-deducted polymorphically when a beverage is processed, and a low-stock alert fires when any ingredient drops below its threshold.
+    \item \textbf{Hierarchical Menu Tree} -- the full menu is represented as an N-ary tree (Coffee and Tea categories, four to eight items each, three sizes per item) and traversed via DFS to populate the UI.
+    \item \textbf{Sorting \& Search} -- \texttt{SortUtil} provides TimSort-based sorts for orders (by time, price, loyalty) and customers (by points, name), as well as binary search for fast order and customer lookup.
+\end{itemize}
+
+\subsection{Modifications Since the Proposal Stage}
+Compared to the initial project proposal, the following enhancements were introduced during development:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Generic \texttt{ActionHistory<T>}} -- the undo/redo manager was redesigned as a type-safe generic class using \texttt{Consumer<T>} lambda pairs, making it reusable beyond the order context.
+    \item \textbf{SortUtil module} -- added in Phase 5 to consolidate all sorting and binary-search logic, replacing ad-hoc comparator usage scattered across controller classes.
+    \item \textbf{Singleton pattern for \texttt{InventoryManager}} -- originally the inventory was passed as a constructor argument; it was refactored to a Singleton to eliminate redundant instantiation.
+    \item \textbf{\texttt{OrderQueue} interface} -- extracted as a formal Java interface to allow \texttt{RegularOrderQueue} and \texttt{VIPOrderQueue} to be swapped polymorphically in \texttt{OrderController}.
+\end{itemize}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 2
+% ─────────────────────────────────────────────────────────────────────────────
+\section{System Requirements and Specifications}
+
+\subsection{Functional Requirements}
+The system must support the following core operations:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Order Management}: staff can start a new order for a registered customer, add or remove beverages (with toppings) from the active cart, apply a voucher code, and either place or discard the order.
+    \item \textbf{Order Queue}: placed orders enter the correct queue automatically. Staff can trigger \texttt{processNext()} to dequeue and complete the highest-priority order. Pending orders can also be cancelled by ID.
+    \item \textbf{Customer Management}: register new customers (name, phone number, optional email); look up existing customers by phone; view a loyalty-point leaderboard sorted in descending order.
+    \item \textbf{Voucher Management}: create vouchers with a code, discount percentage, and expiry flag; apply a voucher to the current order; mark the voucher as used after redemption.
+    \item \textbf{Inventory Management}: view current stock levels for all ingredients; restock any ingredient by a specified amount; receive low-stock alerts when any ingredient's quantity falls below its defined threshold.
+\end{enumerate}
+
+\subsection{Non-Functional Requirements}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Performance}: all queue operations (enqueue/dequeue/peek) complete in $O(1)$ or $O(\log n)$ worst-case time; \texttt{HashMap}-based lookups for customers, vouchers, and ingredients are $O(1)$ average.
+    \item \textbf{Usability}: the Swing GUI is organised into four tabbed panels (Order, Customer, Inventory, Voucher) with clearly labelled buttons and text fields; no external installation beyond the JDK is required.
+    \item \textbf{Memory safety}: the \texttt{ActionHistory} stack is capped at 30 entries to prevent unbounded growth during long sessions.
+    \item \textbf{Input validation}: blank phone numbers, empty names, negative point values, and duplicate voucher codes are rejected with descriptive error messages before any state change occurs.
+    \item \textbf{Portability}: the application is built with a shell script (\texttt{build.sh}) that compiles sources to an \texttt{out/} directory and runs \texttt{Main}; no build tool (Maven, Gradle) is required.
+    \item \textbf{Scalability}: the MVC separation and the \texttt{OrderQueue} interface ensure that adding new queue strategies or beverage categories requires no changes to the view layer.
+\end{itemize}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 3
+% ─────────────────────────────────────────────────────────────────────────────
+\section{System Design and Architecture}
+
+\subsection{High-Level Architecture}
+The application follows the Model-View-Controller (MVC) architectural pattern, organised into five top-level Java packages as detailed in Table~\ref{tab:mvc_packages}.
+
+\begin{table}[H]
+\centering
+\caption{MVC Package Roles in the VinTony POS System}
+\label{tab:mvc_packages}
+\begin{tabular}{lp{10cm}}
+\toprule
+\textbf{Package} & \textbf{Role} \\
+\midrule
+\texttt{model/} & Plain Java Objects: Beverage hierarchy, Customer, Order, Voucher, Ingredient, MenuNode/MenuTree \\
+\texttt{controller/} & Business logic: OrderController, CustomerController, InventoryController, VoucherController, queue implementations \\
+\texttt{factory/} & BeverageFactory -- creates Beverage instances from string identifiers \\
+\texttt{util/} & ActionHistory<T> (undo/redo), SortUtil (sorting and binary search) \\
+\texttt{view/} & Java Swing: MainFrame (tabbed container), OrderPanel, CustomerPanel, InventoryPanel, VoucherPanel \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The \texttt{Main} class instantiates all controllers and passes them to \texttt{MainFrame}, which distributes references to the individual panels. Panels communicate exclusively through controller methods -- they never access model objects directly, preserving the MVC boundary.
+
+\subsection{OOP Concepts Applied}
+A core requirement of the COMP1020 term project is the direct application of key OOP concepts and GoF design patterns. Table~\ref{tab:oop_concepts} outlines how each was realized.
+
+\begin{table}[H]
+\centering
+\caption{OOP Principles and Design Patterns Applied}
+\label{tab:oop_concepts}
+\begin{tabular}{lp{10cm}}
+\toprule
+\textbf{OOP Principle / Pattern} & \textbf{Implementation Details} \\
+\midrule
+\textbf{Abstraction} & \texttt{Beverage} is an abstract class defining \texttt{calculatePrice()}, \texttt{getDescription()}, and \texttt{getIngredientRequirements()}; \texttt{OrderQueue} is a Java interface. \\
+\textbf{Inheritance} & \texttt{Coffee} and \texttt{Tea} extend \texttt{Beverage}; \texttt{ToppingDecorator} extends \texttt{Beverage}; \texttt{Topping} extends \texttt{ToppingDecorator}. \\
+\textbf{Polymorphism} & \texttt{calculatePrice()} and \texttt{getIngredientRequirements()} are overridden per concrete type; \texttt{OrderController} calls these through the \texttt{Beverage} reference. \\
+\textbf{Encapsulation} & \texttt{Customer} exposes \texttt{addPoints()} / \texttt{redeemPoints()} to guard loyalty points; \texttt{Order} exposes \texttt{addItem()} / \texttt{removeItem()} to maintain its item list. \\
+\textbf{Factory Pattern} & \texttt{BeverageFactory.create(type, size)} instantiates the correct \texttt{Coffee} or \texttt{Tea} subclass from string inputs. \\
+\textbf{Decorator Pattern} & \texttt{ToppingDecorator} wraps any \texttt{Beverage}; \texttt{Topping} (concrete decorator) adds its price and description by delegating to the wrapped object, allowing unlimited stacking. \\
+\textbf{Singleton Pattern} & \texttt{InventoryManager.getInstance()} guarantees a single inventory instance across all controllers. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Main Class Interactions}
+When staff place an order, the interaction flows as follows: the \texttt{OrderPanel} collects the customer's phone number, calls \texttt{CustomerController.findByPhone()} to retrieve the \texttt{Customer} object, then calls \texttt{OrderController.startNewOrder(customer)}. As items are added via the GUI, \texttt{OrderController.addItemToActive(beverage)} is invoked; each call is wrapped in an \texttt{ActionHistory} action so it can be undone. When the staff clicks Place Order, \texttt{OrderController.placeActiveOrder()} validates the cart, sets the status to PENDING, and routes the Order to either \texttt{VIPOrderQueue} or \texttt{RegularOrderQueue} based on \texttt{Customer.isVip()}. Clicking Process Next calls \texttt{OrderController.processNext(inventoryCtrl)}, which dequeues the highest-priority order, passes ingredient requirements to \texttt{InventoryController.consumeIngredients()}, marks the order COMPLETED, and calls \texttt{Customer.addPoints()} with the earned points.
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 4
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Data Structures and Algorithms}
+
+\subsection{Selected Data Structures}
+The system leverages various collections from the Java Collections Framework (JCF) to achieve optimal performance, as detailed in Table~\ref{tab:data_structures}.
+
+\begin{table}[H]
+\centering
+\caption{Selected Data Structures and Complexities}
+\label{tab:data_structures}
+\begin{tabular}{lllp{5.5cm}}
+\toprule
+\textbf{Structure} & \textbf{JCF Class} & \textbf{Purpose} & \textbf{Complexity} \\
+\midrule
+LinkedList (Queue) & \texttt{LinkedList} & FIFO order queue for regular customers & Enqueue/dequeue $O(1)$ \\
+PriorityQueue & \texttt{PriorityQueue} & Priority queue ordered by loyalty points; FIFO tiebreak by order time & Enqueue/dequeue $O(\log n)$, peek $O(1)$ \\
+HashMap & \texttt{HashMap} & Customer, voucher, and inventory lookup by code/phone & Lookup/Get/Put $O(1)$ average \\
+ArrayDeque (Stack $\times 2$) & \texttt{ArrayDeque} & Undo stack and redo stack for cart actions; capped at 30 & Push/pop $O(1)$ \\
+N-ary Tree & Custom & Hierarchical menu: root $\rightarrow$ Category $\rightarrow$ Item $\rightarrow$ Size (leaf) & DFS traversal $O(n)$ \\
+ArrayList & \texttt{ArrayList} & Storage for list sorts and dynamic lookup & Insertion $O(1)$ amortized \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Algorithms and Their Roles}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Max-heap ordering (VIPOrderQueue)}: Java's \texttt{PriorityQueue} is configured with a custom \texttt{Comparator} that sorts by \texttt{Customer.getLoyaltyPoints()} descending, with \texttt{Order.getOrderTime()} as a tiebreaker. This ensures that the highest-value customer is always served first while fairness is preserved within the same loyalty tier.
+    \item \textbf{Depth-First Search (MenuTree)}: The \texttt{getAllLeaves()} method recursively visits each \texttt{MenuNode}. Internal nodes (category, item) are skipped; leaf nodes carry a \texttt{Beverage} reference and are collected into an \texttt{ArrayList} for display. This design allows the menu to be extended with new categories or items simply by adding nodes to the tree.
+    \item \textbf{Lambda-pair Undo/Redo (ActionHistory)}: Each action is stored as a pair of \texttt{Consumer<T>} lambdas: \texttt{doAction} and \texttt{undoAction}. Executing an action calls \texttt{doAction.accept(target)} and pushes the record onto the \texttt{undoStack}; \texttt{undo()} pops the record, calls \texttt{undoAction.accept(target)}, and pushes it onto the \texttt{redoStack}.
+    \item \textbf{TimSort (SortUtil)}: \texttt{SortUtil.sortByPointsDesc()} and related methods copy the input list into a new \texttt{ArrayList} and call \texttt{List.sort()} with a lambda comparator. Java's TimSort is stable and runs in $O(n \log n)$ worst-case, which is highly efficient.
+    \item \textbf{Binary Search (SortUtil)}: Used for fast order lookup by ID and customer lookup by name on a pre-sorted list, yielding $O(\log n)$ query time.
+\end{itemize}
+
+\subsection{Trade-offs and Optimization Decisions}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{PriorityQueue vs. LinkedList for VIP}: A max-heap adds $O(\log n)$ overhead per enqueue compared to the $O(1)$ of a plain list. This trade-off is justified because VIP orders are few, so $n$ is always small, yet the guaranteed priority ordering significantly improves VIP customer experience.
+    \item \textbf{HashMap vs. TreeMap for lookups}: \texttt{HashMap} provides $O(1)$ average access, which is optimal for phone/code/ingredient lookups. \texttt{TreeMap} would give $O(\log n)$ but offer sorted key iteration -- a feature not required here, so \texttt{HashMap} was preferred.
+    \item \textbf{ArrayList copy in SortUtil}: Each sort creates a shallow copy of the input list, leaving the authoritative data in the controller unchanged. This prevents accidental mutation of live collections and makes the sort a pure function with no side effects.
+    \item \textbf{Undo stack cap at 30}: An unbounded undo history would accumulate \texttt{Action} objects for the entire session. The cap ensures constant memory overhead while still covering all realistic user actions in a single order build.
+\end{itemize}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 5
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Implementation Details}
+
+\subsection{Language, Libraries, and Build System}
+The project is implemented entirely in Java SE 18. No third-party libraries are used; all data structures are from the Java Collections Framework (\texttt{java.util}). The GUI is built with Java Swing (\texttt{javax.swing}), which ships with the JDK. A single shell script, \texttt{build.sh}, compiles all source files under \texttt{src/} to \texttt{out/} using \texttt{javac} and then launches the application with \texttt{java -cp out Main}. This zero-dependency setup means the project runs on any machine with a compatible JDK.
+
+\subsection{File and Package Structure}
+The system layout separates concerns cleanly:
+\begin{itemize}[noitemsep,topsep=3pt,leftmargin=*]
+    \item \texttt{src/Main.java} -- Entry point: instantiates all controllers and launches MainFrame.
+    \item \texttt{src/controller/} -- Business logic: OrderController, CustomerController, InventoryController, VoucherController, OrderQueue interface, RegularOrderQueue, VIPOrderQueue.
+    \item \texttt{src/factory/} -- BeverageFactory -- maps string identifiers to concrete Beverage instances.
+    \item \texttt{src/model/beverage/} -- Beverage (abstract), Coffee, Tea, Size (enum).
+    \item \texttt{src/model/addon/} -- ToppingDecorator (abstract), Topping (concrete decorator), Topping.ToppingType (enum).
+    \item \texttt{src/model/customer/} -- Customer.
+    \item \texttt{src/model/inventory/} -- InventoryManager (Singleton), Ingredient.
+    \item \texttt{src/model/menu/} -- MenuTree, MenuNode.
+    \item \texttt{src/model/order/} -- Order, OrderStatus (enum).
+    \item \texttt{src/model/voucher/} -- Voucher.
+    \item \texttt{src/util/} -- ActionHistory<T>, SortUtil.
+    \item \texttt{src/view/} -- MainFrame, OrderPanel, CustomerPanel, InventoryPanel, VoucherPanel.
+    \item \texttt{test/} -- VinTonyFeatureSmokeTest.java -- headless integration test.
+    \item \texttt{docs/} -- VinTony\_UML\_Class\_Diagram.html, order\_processing.html.
+\end{itemize}
+
+\subsection{Key Implementation Details}
+
+\subsubsection{Generic ActionHistory<T>}
+The stack-based undo/redo mechanism is implemented as a type-safe generic class, entirely decoupled from the domain model. Listings~\ref{lst:actionhistory} illustrates the core of this class.
+
+\begin{lstlisting}[language=Java,caption={Generic Stack-based Undo/Redo Manager in ActionHistory.java},label={lst:actionhistory}]
+package util;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.function.Consumer;
+
+public class ActionHistory<T> {
+
+    public static class Action<T> {
+        private final String      description;
+        private final T           target;
+        private final Consumer<T> doAction;
+        private final Consumer<T> undoAction;
+
+        public Action(String description, T target,
+                      Consumer<T> doAction, Consumer<T> undoAction) {
+            this.description = description;
+            this.target      = target;
+            this.doAction    = doAction;
+            this.undoAction  = undoAction;
+        }
+
+        public void execute() { doAction.accept(target); }
+        public void undo()    { undoAction.accept(target); }
+        public String getDescription() { return description; }
+    }
+
+    private final Deque<Action<T>> undoStack = new ArrayDeque<>();
+    private final Deque<Action<T>> redoStack = new ArrayDeque<>();
+    private final int maxSize;
+
+    public ActionHistory(int maxSize) {
+        this.maxSize = maxSize;
+    }
+
+    public void execute(String description, T target,
+                        Consumer<T> doAction, Consumer<T> undoAction) {
+        Action<T> action = new Action<>(description, target, doAction, undoAction);
+        action.execute();
+        undoStack.push(action);
+        redoStack.clear(); // Redo is invalidated when a new action is performed
+
+        if (undoStack.size() > maxSize) {
+            undoStack.removeLast();
+        }
+    }
+
+    public String undo() {
+        if (undoStack.isEmpty()) return null;
+        Action<T> action = undoStack.pop();
+        action.undo();
+        redoStack.push(action);
+        return "Undone: " + action.getDescription();
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Polymorphic Ingredient Deduction via Decorator Pattern}
+The Coffee/Tea hierarchy and Toppings employ a highly flexible Decorator pattern. Listing~\ref{lst:topping} shows how toppings recursively compute drink costs and polymorphic ingredient requirements.
+
+\begin{lstlisting}[language=Java,caption={Concrete Decorator Class representing toppings in Topping.java},label={lst:topping}]
+package model.addon;
+
+import model.beverage.Beverage;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+public class Topping extends ToppingDecorator {
+
+    public enum ToppingType {
+        MILK_FOAM("Milk Foam",         8_000),
+        CARAMEL_SYRUP("Caramel Syrup", 10_000),
+        WHIPPED_CREAM("Whipped Cream", 12_000),
+        PEARL("Pearl (Boba)",          10_000),
+        COCONUT_JELLY("Coconut Jelly", 9_000),
+        EXTRA_SHOT("Extra Espresso",   15_000);
+
+        private final String label;
+        private final double price;
+
+        ToppingType(String label, double price) {
+            this.label = label;
+            this.price = price;
+        }
+        public String getLabel() { return label; }
+        public double getPrice() { return price; }
+    }
+
+    private final ToppingType toppingType;
+
+    public Topping(Beverage beverage, ToppingType toppingType) {
+        super(beverage);
+        this.toppingType = toppingType;
+    }
+
+    @Override
+    public double calculatePrice() {
+        return beverage.calculatePrice() + toppingType.getPrice();
+    }
+
+    @Override
+    public String getDescription() {
+        return beverage.getDescription() + " + " + toppingType.getLabel();
+    }
+
+    @Override
+    public Map<String, Integer> getIngredientRequirements() {
+        Map<String, Integer> ingredients = new LinkedHashMap<>(beverage.getIngredientRequirements());
+        String ingredientName = switch (toppingType) {
+            case MILK_FOAM -> "Whole Milk";
+            case CARAMEL_SYRUP -> "Caramel Syrup";
+            case WHIPPED_CREAM -> "Whipped Cream";
+            case PEARL -> "Boba Pearls";
+            case COCONUT_JELLY -> "Coconut Jelly";
+            case EXTRA_SHOT -> "Espresso Beans";
+        };
+        int amount = switch (toppingType) {
+            case MILK_FOAM -> 60;
+            case CARAMEL_SYRUP -> 25;
+            case WHIPPED_CREAM -> 30;
+            case PEARL, COCONUT_JELLY -> 40;
+            case EXTRA_SHOT -> 10;
+        };
+        ingredients.merge(ingredientName, amount, Integer::sum);
+        return ingredients;
+    }
+}
+\end{lstlisting}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 6
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Testing and Evaluation}
+
+\subsection{Testing Methodology}
+Testing was performed using a dedicated headless smoke test class, \texttt{VinTonyFeatureSmokeTest.java}, located in the \texttt{test/} directory. This class exercises all major features programmatically -- without opening any Swing window -- allowing it to be run in a terminal or CI environment. Each test scenario is isolated: controllers are freshly instantiated and data is set up from scratch, so no test depends on the state left by a previous one.
+
+\subsection{Test Cases}
+The testing suite covers all functional areas, ensuring correct integration of patterns and data structures. Table~\ref{tab:test_cases} details these tests.
+
+\begin{table}[H]
+\centering
+\caption{System Smoke Test Cases and Results}
+\label{tab:test_cases}
+\small
+\begin{tabular}{lp{4.2cm}p{5.8cm}c}
+\toprule
+\textbf{Test Case} & \textbf{Steps} & \textbf{Expected Outcome} & \textbf{Status} \\
+\midrule
+VIP routing & Register customer with 150 pts $\rightarrow$ place order $\rightarrow$ inspect queue & Order appears in \texttt{VIPOrderQueue}; \texttt{RegularOrderQueue} empty & PASS \\
+\addlinespace
+Regular routing & Register customer with 50 pts $\rightarrow$ place order $\rightarrow$ inspect queue & Order appears in \texttt{RegularOrderQueue}; \texttt{VIPOrderQueue} empty & PASS \\
+\addlinespace
+Undo / Redo & Add Latte (M) $\rightarrow$ undo $\rightarrow$ verify cart empty $\rightarrow$ redo $\rightarrow$ verify cart restored & Cart reverts and restores correctly; \texttt{ActionHistory} sizes match & PASS \\
+\addlinespace
+Voucher & Create 10\% voucher $\rightarrow$ apply to order $\rightarrow$ verify discount $\rightarrow$ attempt reuse & Price reduced by 10\%; second application rejected as already used & PASS \\
+\addlinespace
+Inventory & Process order with known ingredients $\rightarrow$ query stock levels & Stock decreased by the amounts returned by \texttt{getIngredientRequirements()} & PASS \\
+\addlinespace
+Low-stock alert & Set ingredient quantity to 5, threshold to 50 $\rightarrow$ check \texttt{isLowStock()} & Returns true; alert displayed in \texttt{InventoryPanel} & PASS \\
+\addlinespace
+Points award & Process completed order $\rightarrow$ check customer loyalty points & Points equal to floor(totalPrice / 1000) added to customer account & PASS \\
+\addlinespace
+Cancellation & Place two orders $\rightarrow$ cancel first by ID $\rightarrow$ process next & First order marked CANCELLED; second order processed correctly & PASS \\
+\addlinespace
+Decorator & Latte (M) + Milk Foam + Caramel Syrup $\rightarrow$ \texttt{calculatePrice()} & Price = 30,000 + 5,000 (M) + 8,000 + 10,000 = 53,000 VND & PASS \\
+\addlinespace
+Binary search & Sort orders by ID $\rightarrow$ binary search for a specific ID & Correct Order returned; null returned for non-existent ID & PASS \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Correctness, Robustness, and Usability}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Correctness}: all ten smoke test scenarios pass without assertion errors on the final build. The decorator stacking test confirms price composition is cumulative and correct.
+    \item \textbf{Robustness}: edge cases are handled explicitly -- dequeuing from an empty queue throws \texttt{NoSuchElementException} with a clear message; redeeming more points than available returns false without mutating the balance; duplicate voucher codes are rejected at creation time.
+    \item \textbf{Usability}: the Swing GUI follows a consistent tab-based layout. Buttons are disabled when actions are unavailable (e.g., Undo button is greyed out when the history is empty). Error messages are shown in labelled text fields rather than modal dialogs, avoiding interruption to the workflow.
+\end{itemize}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 7
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Challenges and Solutions}
+
+\subsection{Technical Difficulties}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Challenge: State sync during rapid GUI events} -- Maintaining consistent undo/redo state when the GUI could trigger add and remove actions in rapid succession. \\
+    \textbf{Solution}: The \texttt{ActionHistory<T>} class uses two separate \texttt{ArrayDeque} stacks. Every new action clears the redo stack to prevent branching history -- the same semantics used by text editors. The lambda-pair design ensures that the captured \texttt{Beverage} reference is always the same object that was originally added or removed, so there is no risk of operating on a stale or cloned item.
+    \item \textbf{Challenge: Multi-topping ingredient deduction} -- Deducting the correct ingredient amounts for composed drinks (base beverage + multiple toppings) without coupling the controller to specific beverage types. \\
+    \textbf{Solution}: \texttt{Beverage.getIngredientRequirements()} returns a Map and each decorator merges its own contribution using \texttt{Map.merge()} with \texttt{Integer::sum} as the merge function. The controller calls this single polymorphic method and passes the resulting map to \texttt{InventoryController} -- no \texttt{instanceof} checks anywhere.
+\end{itemize}
+
+\subsection{Design and Architectural Issues}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Challenge: Class explosion in toppings} -- Choosing between inheritance and composition for toppings: adding toppings as subclasses of Coffee or Tea would require a new class for every combination. \\
+    \textbf{Solution}: The Decorator pattern was adopted. \texttt{ToppingDecorator} wraps any \texttt{Beverage} -- including already-decorated objects -- so toppings can be stacked arbitrarily (e.g., Latte + Milk Foam + Caramel Syrup) without an exponential class explosion. Adding a new topping type requires only a new \texttt{ToppingType} enum constant.
+    \item \textbf{Challenge: View and Model decoupling} -- Keeping the Swing view layer from becoming entangled with domain logic as panels grew in complexity. \\
+    \textbf{Solution}: A strict MVC boundary was enforced: controller methods return primitive values or model objects; panels never import model classes directly; all model mutations go through a controller. This made it straightforward to test the domain logic headlessly in the smoke test.
+\end{itemize}
+
+\subsection{Team Collaboration and Lessons Learned}
+Tasks were divided by architectural layer: one member owned the model and factory packages, another owned the controller and util packages, and a third developed the Swing view layer. Regular code reviews caught inconsistencies in naming conventions early. The main lesson learned was to define interfaces (\texttt{OrderQueue}) before implementing concrete classes -- doing so up front would have avoided a mid-project refactor when \texttt{VIPOrderQueue} was introduced.
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 8
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Conclusion and Limitations}
+
+\subsection{Overall Achievements}
+The VinTony Coffee POS \& Loyalty System successfully delivers all features specified in the initial project proposal. The final implementation demonstrates: seven distinct data structures from the Java Collections Framework; four OOP design patterns (Factory, Decorator, Singleton, and the interface-based Strategy for queues); a fully functional MVC Swing application with five panels; a generic undo/redo manager reusable across any domain type; and a headless smoke-test suite that validates all major code paths without a GUI. All test cases pass on the submitted build.
+
+\subsection{Strengths of the Developed System}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Clean architectural separation}: the MVC pattern and the \texttt{OrderQueue} interface ensure that any panel, controller, or queue implementation can be replaced independently.
+    \item \textbf{Extensible beverage hierarchy}: adding a new drink category (e.g., Smoothie) requires only a new \texttt{Beverage} subclass and a \texttt{MenuTree} branch -- no changes to controllers or views.
+    \item \textbf{Robust undo/redo}: the generic \texttt{ActionHistory<T>} is fully decoupled from the order domain and could be reused in future features.
+    \item \textbf{Zero external dependencies}: the project compiles and runs with nothing beyond the JDK, making deployment trivial on any compatible system.
+\end{itemize}
+
+\subsection{Current Limitations}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{No data persistence}: all customers, orders, vouchers, and inventory changes are lost when the application is closed, as the system stores everything in memory.
+    \item \textbf{Single-branch design}: there is no concept of multiple stations or concurrent users; the application assumes a single cashier terminal.
+    \item \textbf{No authentication}: any user who opens the application has full access to all panels including inventory management and voucher creation.
+    \item \textbf{Hardcoded menu}: items and prices are defined in source code; there is no runtime interface for adding or removing menu items.
+    \item \textbf{No receipt printing}: the system records completed orders in memory but provides no mechanism to print or export a receipt for the customer.
+\end{itemize}
+
+\subsection{Possible Future Improvements}
+\begin{itemize}[leftmargin=*]
+    \item Persist data to a local SQLite database or JSON file so that customer loyalty points and inventory levels survive restarts.
+    \item Add a login screen with role-based access (cashier vs. manager) to restrict sensitive operations such as restocking and voucher creation.
+    \item Build a REST API back-end (Spring Boot) and migrate the UI to a web or mobile front-end to support multi-station and multi-branch deployments.
+    \item Introduce a dynamic menu editor panel that allows managers to add, edit, or archive menu items without recompiling the application.
+    \item Generate and print PDF receipts using the Java \texttt{iText} or Apache \texttt{PDFBox} library.
+\end{itemize}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 9
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Team Contributions}
+The responsibilities were divided cleanly across members. Table~\ref{tab:contributions} summarizes each team member's primary responsibilities throughout the project lifecycle.
+
+\begin{table}[H]
+\centering
+\caption{Team Member Contribution Summary}
+\label{tab:contributions}
+\begin{tabular}{lp{10.5cm}}
+\toprule
+\textbf{Team Member} & \textbf{Primary Responsibilities} \\
+\midrule
+\textbf{Member 1} & Model layer: Beverage hierarchy (Beverage, Coffee, Tea, Size), Decorator pattern (ToppingDecorator, Topping), BeverageFactory, MenuTree and MenuNode. UML class diagram (\texttt{VinTony\_UML\_Class\_Diagram.html}). \\
+\midrule
+\textbf{Member 2} & Controller layer: OrderController (cart management, queue routing, cancel logic), OrderQueue interface, RegularOrderQueue, VIPOrderQueue. ActionHistory<T> undo/redo manager. Order lifecycle flowchart (\texttt{order\_processing.html}). \\
+\midrule
+\textbf{Member 3} & Model layer: Customer, Voucher, Ingredient, InventoryManager (Singleton). Controller layer: CustomerController, VoucherController, InventoryController. SortUtil (sorting and binary search). Smoke test (\texttt{VinTonyFeatureSmokeTest.java}). \\
+\midrule
+\textbf{All Members} & Java Swing view layer (MainFrame, OrderPanel, CustomerPanel, InventoryPanel, VoucherPanel). Integration testing, bug fixes, build script (\texttt{build.sh}), and final report. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 10
+% ─────────────────────────────────────────────────────────────────────────────
+\section{References}
+\begin{enumerate}[label={[\arabic*]},leftmargin=*]
+    \item Oracle Corporation. \emph{Java SE 18 API Documentation}. \url{https://docs.oracle.com/en/java/javase/18/docs/api/}
+    \item Gamma, E., Helm, R., Johnson, R., \& Vlissides, J. (1994). \emph{Design Patterns: Elements of Reusable Object-Oriented Software}. Addison-Wesley.
+    \item Oracle Corporation. \emph{The Java Tutorials -- Collections}. \url{https://docs.oracle.com/javase/tutorial/collections/}
+    \item Oracle Corporation. \emph{Creating a GUI With Swing}. \url{https://docs.oracle.com/javase/tutorial/uiswing/}
+    \item Bloch, J. (2018). \emph{Effective Java} (3rd ed.). Addison-Wesley.
+    \item VinUniversity COMP1020 Lecture Slides -- \emph{Data Structures and OOP Design Patterns}, Spring 2026.
+\end{enumerate}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+% SECTION 11
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Appendix}
+
+\subsection{Smoke Test Summary}
+\texttt{VinTonyFeatureSmokeTest.java} executes the ten test scenarios described in Section~6.2 and prints a PASS / FAIL result for each. All ten scenarios pass on the submitted codebase. The full console output is included in the project repository under \texttt{test/smoke\_test\_output.txt}.
+
+\subsection{UML Class Diagram}
+A fully detailed UML class diagram showing all classes, their fields, methods, and relationships (inheritance, association, dependency) is provided as \texttt{docs/VinTony\_UML\_Class\_Diagram.html} in the project archive. Key relationships illustrated:
+\begin{itemize}[noitemsep,topsep=2pt]
+    \item \texttt{Beverage} $\leftarrow$ \texttt{Coffee}, \texttt{Tea}
+    \item \texttt{Beverage} $\leftarrow$ \texttt{ToppingDecorator} $\leftarrow$ \texttt{Topping}
+    \item \texttt{OrderController} $\rightarrow$ \texttt{OrderQueue} $\leftarrow$ \texttt{RegularOrderQueue}, \texttt{VIPOrderQueue}
+    \item \texttt{InventoryManager} (Singleton) $\rightarrow$ \texttt{Ingredient}
+\end{itemize}
+
+\subsection{Order Lifecycle Flowchart}
+\texttt{docs/order\_processing.html} contains an interactive flowchart tracing an order from cart creation through queue routing, processing, inventory deduction, and loyalty-point award, including the cancellation branch.
+
+\end{document}

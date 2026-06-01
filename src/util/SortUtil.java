@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * Sorting and Binary Search utilities.
  *
- * All sort methods are O(n log n) — backed by Java's TimSort (Collections.sort).
+ * All sort methods are O(n log n) — backed by a custom, hand-coded Generic Merge Sort.
  * Binary search requires a pre-sorted list — O(log n).
  *
  * T11 – Phase 5 Refactor | VinTony POS Loyalty System
@@ -20,20 +20,64 @@ public class SortUtil {
     private SortUtil() {} // utility class — no instantiation
 
     // ══════════════════════════════════════════════════════════════════════════
+    // CUSTOM GENERIC MERGE SORT ALGORITHM
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Custom generic Merge Sort implementation — O(n log n) stable sorting.
+     */
+    public static <T> void mergeSort(List<T> list, Comparator<? super T> c) {
+        if (list == null || list.size() < 2) return;
+        List<T> temp = new ArrayList<>(list);
+        mergeSort(list, temp, 0, list.size() - 1, c);
+    }
+
+    private static <T> void mergeSort(List<T> list, List<T> temp, int left, int right, Comparator<? super T> c) {
+        if (left < right) {
+            int mid = left + (right - left) / 2;
+            mergeSort(list, temp, left, mid, c);
+            mergeSort(list, temp, mid + 1, right, c);
+            merge(list, temp, left, mid, right, c);
+        }
+    }
+
+    private static <T> void merge(List<T> list, List<T> temp, int left, int mid, int right, Comparator<? super T> c) {
+        for (int i = left; i <= right; i++) {
+            temp.set(i, list.get(i));
+        }
+
+        int i = left;
+        int j = mid + 1;
+        int k = left;
+
+        while (i <= mid && j <= right) {
+            if (c.compare(temp.get(i), temp.get(j)) <= 0) {
+                list.set(k++, temp.get(i++));
+            } else {
+                list.set(k++, temp.get(j++));
+            }
+        }
+
+        while (i <= mid) {
+            list.set(k++, temp.get(i++));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     // ORDER SORTING
     // ══════════════════════════════════════════════════════════════════════════
 
     /** Sort orders by orderTime ascending (oldest first). */
     public static List<Order> sortByTime(List<Order> orders) {
         List<Order> copy = new ArrayList<>(orders);
-        copy.sort(Comparator.comparing(Order::getOrderTime));
+        mergeSort(copy, Comparator.comparing(Order::getOrderTime));
         return copy;
     }
 
     /** Sort orders by total price ascending. */
     public static List<Order> sortByPriceAsc(List<Order> orders) {
         List<Order> copy = new ArrayList<>(orders);
-        copy.sort(Comparator.comparingDouble(Order::getTotalPrice));
+        mergeSort(copy, Comparator.comparingDouble(Order::getTotalPrice));
         return copy;
     }
 
@@ -41,14 +85,14 @@ public class SortUtil {
     public static List<Order> sortByPriceDesc(List<Order> orders) {
         List<Order> copy = new ArrayList<>(orders);
         Comparator<Order> cmp = Comparator.comparingDouble(Order::getTotalPrice);
-        copy.sort(cmp.reversed());
+        mergeSort(copy, cmp.reversed());
         return copy;
     }
 
     /** Sort orders by customer loyalty points descending (VIP first). */
     public static List<Order> sortByLoyaltyDesc(List<Order> orders) {
         List<Order> copy = new ArrayList<>(orders);
-        copy.sort(Comparator
+        mergeSort(copy, Comparator
             .comparingInt((Order o) -> o.getCustomer().getLoyaltyPoints())
             .reversed());
         return copy;
@@ -61,14 +105,14 @@ public class SortUtil {
     /** Sort customers by loyalty points descending (leaderboard). */
     public static List<Customer> sortByPointsDesc(List<Customer> customers) {
         List<Customer> copy = new ArrayList<>(customers);
-        copy.sort(Comparator.comparingInt(Customer::getLoyaltyPoints).reversed());
+        mergeSort(copy, Comparator.comparingInt(Customer::getLoyaltyPoints).reversed());
         return copy;
     }
 
     /** Sort customers alphabetically by name. */
     public static List<Customer> sortByName(List<Customer> customers) {
         List<Customer> copy = new ArrayList<>(customers);
-        copy.sort(Comparator.comparing(Customer::getName, String.CASE_INSENSITIVE_ORDER));
+        mergeSort(copy, Comparator.comparing(Customer::getName, String.CASE_INSENSITIVE_ORDER));
         return copy;
     }
 
